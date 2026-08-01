@@ -7,7 +7,7 @@
 }
 
 .acvc-card {
-  background: var(--card, #1a1a2e);
+  background: var(--color-card, #1a1a2e);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -24,7 +24,7 @@
   margin-top: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--secondary, #13131f);
+  background: var(--color-secondary, #13131f);
   overflow: hidden;
 }
 
@@ -39,7 +39,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 20px;
-  border-top: 1px solid var(--border, #2b2b44);
+  border-top: 1px solid var(--color-border, #2b2b44);
 }
 
 .acvc-task-main {
@@ -54,7 +54,7 @@
 .acvc-task-num {
   font-size: 13px;
   font-weight: 700;
-  color: var(--muted-foreground, #9aa0b4);
+  color: var(--color-muted-foreground, #9aa0b4);
   min-width: 22px;
   padding-top: 2px;
   flex-shrink: 0;
@@ -89,9 +89,9 @@
 
 .acvc-gate-footer {
   padding: 10px 20px;
-  border-top: 1px dashed var(--border, #2b2b44);
+  border-top: 1px dashed var(--color-border, #2b2b44);
   font-size: 12.5px;
-  color: var(--muted-foreground, #9aa0b4);
+  color: var(--color-muted-foreground, #9aa0b4);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -103,7 +103,7 @@
   gap: 10px;
   padding: 8px 20px;
   background: rgba(139, 92, 246, 0.08);
-  border-top: 1px solid var(--border, #2b2b44);
+  border-top: 1px solid var(--color-border, #2b2b44);
   cursor: pointer;
 }
 
@@ -118,8 +118,8 @@
 
 .acvc-view-toggle {
   display: inline-flex;
-  background: var(--secondary, #13131f);
-  border: 1px solid var(--border, #2b2b44);
+  background: var(--color-secondary, #13131f);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
@@ -136,7 +136,7 @@
 
 .acvc-btn-primary {
   background: #8b5cf6;
-  color: var(--primary-foreground, #0e0e1a);
+  color: var(--color-primary-foreground, #0e0e1a);
   border: 1px solid #8b5cf6;
   border-radius: 6px;
   padding: 5px 12px;
@@ -147,8 +147,8 @@
 
 .acvc-btn-ghost {
   background: transparent;
-  color: var(--muted-foreground, #9aa0b4);
-  border: 1px solid var(--border, #2b2b44);
+  color: var(--color-muted-foreground, #9aa0b4);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 6px;
   padding: 5px 12px;
   cursor: pointer;
@@ -156,10 +156,10 @@
 }
 
 .acvc-field {
-  border: 1px solid var(--border, #2b2b44);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 8px;
   overflow: hidden;
-  background: var(--card, #1a1a2e);
+  background: var(--color-card, #1a1a2e);
 }
 
 .acvc-field-head {
@@ -172,9 +172,9 @@
 
 .acvc-textarea {
   width: 100%;
-  background: var(--input, #0f0f1c);
-  color: var(--foreground, #e7e7f0);
-  border: 1px solid var(--border, #2b2b44);
+  background: var(--color-input, #0f0f1c);
+  color: var(--color-foreground, #e7e7f0);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 8px;
   padding: 6px 8px;
   font-size: 13px;
@@ -189,8 +189,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
-  background: var(--secondary, #13131f);
-  border: 1px solid var(--border, #2b2b44);
+  background: var(--color-secondary, #13131f);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 16px;
   padding: 18px;
 }
@@ -219,7 +219,7 @@
 
 .acvc-hub {
   position: relative;
-  background: var(--background, #0e0e1a);
+  background: var(--color-background, #0e0e1a);
   border-radius: 999px;
   width: 156px;
   height: 156px;
@@ -228,7 +228,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  box-shadow: 0 0 0 6px var(--background, #0e0e1a);
+  box-shadow: 0 0 0 6px var(--color-background, #0e0e1a);
   cursor: pointer;
 }
 
@@ -246,8 +246,8 @@
 
 .acvc-modal {
   position: relative;
-  background: var(--card, #1a1a2e);
-  border: 1px solid var(--border, #2b2b44);
+  background: var(--color-card, #1a1a2e);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 14px;
   padding: 14px;
   max-width: min(1100px, 94vw);
@@ -260,8 +260,8 @@
 
 .acvc-modal-close {
   background: transparent;
-  color: var(--muted-foreground, #9aa0b4);
-  border: 1px solid var(--border, #2b2b44);
+  color: var(--color-muted-foreground, #9aa0b4);
+  border: 1px solid var(--color-border, #2b2b44);
   border-radius: 8px;
   width: 30px;
   height: 30px;
@@ -274,7 +274,7 @@
    list reads cleanly. */
 .acvc-md {
   font-size: 13px;
-  color: var(--foreground, #e7e7f0);
+  color: var(--color-foreground, #e7e7f0);
 }
 
 .acvc-md table {
@@ -288,14 +288,14 @@
 
 .acvc-md th,
 .acvc-md td {
-  border: 1px solid var(--border, #3a3a52);
+  border: 1px solid var(--color-border, #3a3a52);
   padding: 6px 10px;
   text-align: left;
   vertical-align: top;
 }
 
 .acvc-md th {
-  background: var(--secondary, #20203a);
+  background: var(--color-secondary, #20203a);
   font-weight: 700;
 }
 
@@ -310,13 +310,13 @@
 }
 
 .acvc-md code {
-  background: var(--muted, #0b0b14);
+  background: var(--color-muted, #0b0b14);
   border-radius: 4px;
   padding: 1px 4px;
 }
 
 .acvc-md pre {
-  background: var(--muted, #0b0b14);
+  background: var(--color-muted, #0b0b14);
   border-radius: 6px;
   padding: 8px 10px;
   overflow-x: auto;

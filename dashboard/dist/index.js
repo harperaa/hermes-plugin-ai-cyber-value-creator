@@ -45,14 +45,14 @@
   // -------------------------------------------------------------------------
   // Theme tokens — host CSS variables with fallbacks (match the original).
   // -------------------------------------------------------------------------
-  var PAGE_BG = "var(--background, #0e0e1a)";
-  var CARD_BG = "var(--card, #1a1a2e)";
-  var INSET_BG = "var(--secondary, #13131f)";
-  var FIELD_BG = "var(--input, #0f0f1c)";
-  var BORDER = "var(--border, #2b2b44)";
-  var TEXT = "var(--foreground, #e7e7f0)";
-  var MUTED = "var(--muted-foreground, #9aa0b4)";
-  var ACCENT_FG = "var(--primary-foreground, #0e0e1a)";
+  var PAGE_BG = "var(--color-background, #0e0e1a)";
+  var CARD_BG = "var(--color-card, #1a1a2e)";
+  var INSET_BG = "var(--color-secondary, #13131f)";
+  var FIELD_BG = "var(--color-input, #0f0f1c)";
+  var BORDER = "var(--color-border, #2b2b44)";
+  var TEXT = "var(--color-foreground, #e7e7f0)";
+  var MUTED = "var(--color-muted-foreground, #9aa0b4)";
+  var ACCENT_FG = "var(--color-primary-foreground, #0e0e1a)";
   var PURPLE = "#8b5cf6";
 
   var STATUS_ORDER = ["todo", "in-progress", "done"];
