@@ -96,6 +96,15 @@ def register(ctx) -> None:
 
     _sync_indexed_skills()
 
+    # Dashboard auth: first-visit claim login (email + password) for hosted
+    # deployments. No-op when the operator configured basic-auth env vars,
+    # or outside a hermes dashboard context.
+    try:
+        from . import mentor_auth
+        mentor_auth.register_mentor_auth(ctx)
+    except Exception:
+        logger.warning("mentor-auth registration failed", exc_info=True)
+
 
 # Skills that must live in the flat ~/.hermes/skills tree: plugin-registered
 # skills are opt-in explicit loads, invisible to the system prompt's
