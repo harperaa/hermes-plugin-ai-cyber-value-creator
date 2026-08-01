@@ -18,6 +18,23 @@
   var SDK = window.__HERMES_PLUGIN_SDK__;
   if (!SDK || !window.__HERMES_PLUGINS__) return;
 
+  // First-login onboarding redirect: exactly once per browser, and only
+  // while no LLM provider is connected yet, land the user on the Keys page
+  // (Get-key links + in-browser OAuth). Self-disarming; never fires again.
+  try {
+    if (!localStorage.getItem("acvc-first-login-redirect")) {
+      localStorage.setItem("acvc-first-login-redirect", "1");
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/setup-status")
+        .then(function (s) {
+          if (s && !s.llmConnected && !s.grokConnected &&
+              window.location.pathname !== "/keys") {
+            window.location.assign("/keys");
+          }
+        })
+        .catch(function () {});
+    }
+  } catch (e) { /* storage unavailable — skip the nicety */ }
+
   var React = SDK.React;
   var h = React.createElement;
   var hooks = SDK.hooks;
