@@ -35,7 +35,7 @@ Convert → Deliver — in laps.
 ## Install
 
 ```bash
-hermes plugins install harperaa/ai-cyber-value-creator --enable
+hermes plugins install harperaa/hermes-plugin-ai-cyber-value-creator --enable
 ```
 
 Then restart hermes (and `hermes dashboard` for the roadmap tab). Step tasks
