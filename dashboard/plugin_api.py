@@ -153,3 +153,52 @@ def process_diagram():
     if FileResponse is None or not png.exists():
         raise HTTPException(status_code=404, detail="diagram not found")
     return FileResponse(str(png), media_type="image/png")
+
+
+@router.get("/setup-status")
+def setup_status():
+    """Onboarding checklist state for the Getting Started card.
+
+    Checks are read-only and never raise: each item resolves to done/pending.
+    """
+    import json as _json
+    import os as _os
+
+    home = Path(_os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
+
+    grok = bool(_os.environ.get("XAI_API_KEY", "").strip())
+    if not grok:
+        try:
+            store = _json.loads((home / "auth.json").read_text())
+            grok = bool(store.get("credential_pool", {}).get("xai-oauth"))
+        except Exception:
+            grok = False
+
+    def _env_or_dotenv(name: str) -> bool:
+        if _os.environ.get(name, "").strip():
+            return True
+        try:
+            for line in (home / ".env").read_text().splitlines():
+                if line.strip().startswith(f"{name}=") and line.split("=", 1)[1].strip():
+                    return True
+        except Exception:
+            pass
+        return False
+
+    transcript = _env_or_dotenv("TRANSCRIPT_API_KEY")
+
+    model = ""
+    try:
+        import yaml  # type: ignore
+        cfg = yaml.safe_load((home / "config.yaml").read_text()) or {}
+        m = cfg.get("model")
+        model = (m or {}).get("default", "") if isinstance(m, dict) else str(m or "")
+    except Exception:
+        pass
+
+    return {
+        "grokConnected": grok,
+        "transcriptKeySet": transcript,
+        "model": model,
+        "allDone": grok and transcript,
+    }

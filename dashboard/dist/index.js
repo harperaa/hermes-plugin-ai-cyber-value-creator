@@ -1023,6 +1023,67 @@
     }, 60);
   }
 
+  // Getting Started onboarding card — shows until Grok is connected and the
+  // transcript key is set; deep-links to the dashboard's Environment page
+  // where the xai-oauth device-code card and env editor live. Dismissible per
+  // browser; reappears if setup regresses.
+  function GettingStartedCard() {
+    var st = useState(null);
+    var status = st[0], setStatus = st[1];
+    var dis = useState(function () {
+      try { return localStorage.getItem("acvc-gs-dismissed") === "1"; } catch (e) { return false; }
+    });
+    var dismissed = dis[0], setDismissed = dis[1];
+
+    useEffect(function () {
+      api("/setup-status").then(setStatus).catch(function () { setStatus(null); });
+    }, []);
+
+    if (!status || (status.allDone && true) || dismissed) return null;
+
+    function StepRow(props) {
+      var done = props.done;
+      return h("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0" } },
+        h("span", {
+          style: {
+            width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, fontWeight: 700,
+            background: done ? "var(--color-primary, #14b8a6)" : "transparent",
+            border: done ? "none" : "2px solid var(--color-border, #333)",
+            color: done ? "var(--color-primary-foreground, #04211c)" : MUTED,
+          },
+        }, done ? "✓" : props.num),
+        h("div", null,
+          h("div", { style: { fontWeight: 600, textDecoration: done ? "line-through" : "none", opacity: done ? 0.6 : 1 } }, props.title),
+          !done && props.children));
+    }
+
+    return h("div", {
+      className: "acvc-card",
+      style: { marginBottom: 22, padding: "18px 20px", borderLeft: "3px solid var(--color-primary, #14b8a6)" },
+    },
+      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 } },
+        h("div", { style: { fontSize: 16, fontWeight: 800 } }, "🚀 Getting Started"),
+        h("button", {
+          className: "acvc-btn-ghost",
+          onClick: function () { try { localStorage.setItem("acvc-gs-dismissed", "1"); } catch (e) {} setDismissed(true); },
+          title: "Hide this checklist",
+        }, "Dismiss")),
+      h("div", { style: { color: MUTED, fontSize: 13, marginBottom: 6 } },
+        "Two quick connections and your AI business system is fully armed."),
+      h(StepRow, { num: "1", done: !!status.grokConnected, title: "Connect your Grok account (powers the AI agent)" },
+        h("div", { style: { color: MUTED, fontSize: 13 } },
+          "Open ", h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Settings → Environment"),
+          ", find “xAI Grok OAuth” under OAuth Providers, and sign in with the device code (SuperGrok / Premium+), or paste an XAI_API_KEY.")),
+      h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for YouTube Insights)" },
+        h("div", { style: { color: MUTED, fontSize: 13 } },
+          "Only needed if you want competitor YouTube intelligence. Get a key at ",
+          h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "transcriptapi.com"),
+          " and add TRANSCRIPT_API_KEY on the ",
+          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Environment page"), ".")));
+  }
+
   function ValueCreatorPage() {
     var dataSt = useState(null);
     var data = dataSt[0], setData = dataSt[1];
@@ -1113,6 +1174,8 @@
 
     return h("div", { className: "acvc-page", style: { background: PAGE_BG, minHeight: "100%", color: TEXT } },
       h("div", { style: { padding: "28px 24px 48px", maxWidth: 1100, margin: "0 auto" } },
+
+        h(GettingStartedCard, null),
 
         // Header
         h("div", {
