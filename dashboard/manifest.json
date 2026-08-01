@@ -1,0 +1,14 @@
+{
+  "name": "ai-cyber-value-creator",
+  "label": "Value Creator",
+  "description": "AI Cyber Value Creator roadmap — Create Value foundation, flywheel laps, and the shared Company Context",
+  "icon": "Target",
+  "version": "1.0.0",
+  "tab": {
+    "path": "/value-creator",
+    "position": "after:skills"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

@@ -1,0 +1,346 @@
+/* AI Cyber Value Creator — dashboard plugin styles.
+   Uses the host theme tokens (CSS variables flipped by the .dark class) so the
+   page matches the hermes dashboard in both light and dark mode. */
+
+.acvc-page {
+  font-family: inherit;
+}
+
+.acvc-card {
+  background: var(--card, #1a1a2e);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.acvc-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  cursor: pointer;
+}
+
+.acvc-progress-track {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--secondary, #13131f);
+  overflow: hidden;
+}
+
+.acvc-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.acvc-task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border, #2b2b44);
+}
+
+.acvc-task-main {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.acvc-task-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted-foreground, #9aa0b4);
+  min-width: 22px;
+  padding-top: 2px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.acvc-chip {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.acvc-task-btn {
+  background: transparent;
+  border: 1px solid #4f46e5;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.acvc-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.acvc-gate-footer {
+  padding: 10px 20px;
+  border-top: 1px dashed var(--border, #2b2b44);
+  font-size: 12.5px;
+  color: var(--muted-foreground, #9aa0b4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.acvc-seq-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  background: rgba(139, 92, 246, 0.08);
+  border-top: 1px solid var(--border, #2b2b44);
+  cursor: pointer;
+}
+
+.acvc-seq-label {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #8b5cf6;
+}
+
+.acvc-view-toggle {
+  display: inline-flex;
+  background: var(--secondary, #13131f);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.acvc-view-tab {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.acvc-btn-primary {
+  background: #8b5cf6;
+  color: var(--primary-foreground, #0e0e1a);
+  border: 1px solid #8b5cf6;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.acvc-btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground, #9aa0b4);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.acvc-field {
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card, #1a1a2e);
+}
+
+.acvc-field-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.acvc-textarea {
+  width: 100%;
+  background: var(--input, #0f0f1c);
+  color: var(--foreground, #e7e7f0);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+/* Flywheel */
+.acvc-flywheel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  background: var(--secondary, #13131f);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.acvc-quadrant {
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+}
+
+.acvc-hub-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 210px;
+  height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.acvc-hub {
+  position: relative;
+  background: var(--background, #0e0e1a);
+  border-radius: 999px;
+  width: 156px;
+  height: 156px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 0 0 6px var(--background, #0e0e1a);
+  cursor: pointer;
+}
+
+/* Modal */
+.acvc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.acvc-modal {
+  position: relative;
+  background: var(--card, #1a1a2e);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 14px;
+  padding: 14px;
+  max-width: min(1100px, 94vw);
+  max-height: 92vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acvc-modal-close {
+  background: transparent;
+  color: var(--muted-foreground, #9aa0b4);
+  border: 1px solid var(--border, #2b2b44);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Markdown bodies (Company Context fields) — bordered tables so the problem
+   list reads cleanly. */
+.acvc-md {
+  font-size: 13px;
+  color: var(--foreground, #e7e7f0);
+}
+
+.acvc-md table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 12.5px;
+  display: block;
+  overflow-x: auto;
+}
+
+.acvc-md th,
+.acvc-md td {
+  border: 1px solid var(--border, #3a3a52);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.acvc-md th {
+  background: var(--secondary, #20203a);
+  font-weight: 700;
+}
+
+.acvc-md p {
+  margin: 0 0 6px;
+}
+
+.acvc-md ul,
+.acvc-md ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.acvc-md code {
+  background: var(--muted, #0b0b14);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.acvc-md pre {
+  background: var(--muted, #0b0b14);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+
+.acvc-md a {
+  color: #3b82f6;
+  word-break: break-all;
+}
+
+.acvc-md h3,
+.acvc-md h4,
+.acvc-md h5,
+.acvc-md h6 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .acvc-flywheel {
+    grid-template-columns: 1fr;
+  }
+  .acvc-hub-wrap {
+    display: none;
+  }
+}
