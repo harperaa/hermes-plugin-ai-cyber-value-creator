@@ -1,0 +1,19 @@
+name: ai-cyber-value-creator
+version: 1.0.0
+description: >
+  AI Cyber Value Creator — a guided business-building program: the Create Value
+  foundation (ICP → Problems → Solutions → Offer → Elevator Pitch), then the
+  Attract/Nurture/Convert/Deliver flywheel worked in laps. Roadmap dashboard,
+  step tasks run as hermes kanban sessions, shared Company Context.
+author: Allen Harper
+kind: standalone
+manifest_version: 1
+provides_tools:
+  - record_company_context
+  - get_company_context
+  - value_creator_status
+  - start_value_step
+provides_hooks:
+  - kanban_task_claimed
+  - kanban_task_completed
+  - kanban_task_blocked
