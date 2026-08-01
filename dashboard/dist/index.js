@@ -1074,14 +1074,17 @@
         "Two quick connections and your AI business system is fully armed."),
       h(StepRow, { num: "1", done: !!(status.llmConnected || status.grokConnected), title: "Connect an AI model provider (powers your agent)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
-          "Open the ", h("a", { href: "/models", style: { color: "var(--color-primary, #14b8a6)" } }, "Models page"),
-          " and use Main Model → Change to connect ANY provider you already use (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more — OAuth sign-ins work right in the browser) and pick your main model. One provider is enough; the preset is xai · grok-4.5.")),
+          "Open the ", h("a", { href: "/keys", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use. Then pick your main model on the ",
+          h("a", { href: "/models", style: { color: "var(--color-primary, #14b8a6)" } }, "Models page"),
+          " if you don't want the preset (xai · grok-4.5).")),
       h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for YouTube Insights)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
-          "Only needed if you want competitor YouTube intelligence. Get a key at ",
+          "Only needed if you want competitor YouTube intelligence. Create a key at ",
           h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "transcriptapi.com"),
-          " and add TRANSCRIPT_API_KEY on the ",
-          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Environment page"), ".")));
+          ", then set TRANSCRIPT_API_KEY on the ",
+          h("a", { href: "/keys", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          " — it's waiting for you under Custom Keys.")));
   }
 
   function ValueCreatorPage() {
