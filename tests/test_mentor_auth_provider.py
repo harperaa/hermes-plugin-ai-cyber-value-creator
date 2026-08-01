@@ -19,7 +19,7 @@ def _provider(tmp_path, monkeypatch):
 def test_claim_then_login(tmp_path, monkeypatch):
     from hermes_cli.dashboard_auth import InvalidCredentialsError
     p = _provider(tmp_path, monkeypatch)
-    assert "first sign-in" in p.display_name
+    assert "New Login" in p.display_name
     # weak password rejected, store not created
     with pytest.raises(InvalidCredentialsError):
         p.complete_password_login(username="a@b.co", password="weakpass")

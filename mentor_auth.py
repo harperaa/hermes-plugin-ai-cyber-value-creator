@@ -222,10 +222,11 @@ def adopt_env_password(password: str, username: str = "") -> str:
 # Provider (registered via ctx.register_dashboard_auth_provider)
 # ---------------------------------------------------------------------------
 
-_CLAIM_LABEL = (
-    "Email & Password — first sign-in creates your login "
-    f"(password: {PASSWORD_RULES})"
-)
+# Rendered by the login page as "Sign in with <label>" in a compressed
+# uppercase display font — keep these SHORT or they become unreadable.
+# The full password rules live in the install guide and the claim-failure
+# path; the label carries only a compact hint.
+_CLAIM_LABEL = "Your New Login (8+ Chars, Mixed Case + Symbol)"
 _NORMAL_LABEL = "Email & Password"
 
 

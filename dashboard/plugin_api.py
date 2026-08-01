@@ -166,13 +166,23 @@ def setup_status():
 
     home = Path(_os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
 
-    grok = bool(_os.environ.get("XAI_API_KEY", "").strip())
-    if not grok:
-        try:
-            store = _json.loads((home / "auth.json").read_text())
-            grok = bool(store.get("credential_pool", {}).get("xai-oauth"))
-        except Exception:
-            grok = False
+    # ANY configured LLM provider counts: a provider API key in env/.env, or
+    # any OAuth credential hermes has stored (xai, anthropic, nous, codex, …).
+    _PROVIDER_ENV_KEYS = (
+        "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY", "XAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY",
+        "NOUS_API_KEY", "GLM_API_KEY", "KIMI_API_KEY", "MINIMAX_API_KEY",
+        "GITHUB_TOKEN",
+    )
+    llm = False
+    try:
+        store = _json.loads((home / "auth.json").read_text())
+        pools = store.get("credential_pool", {}) or {}
+        llm = any(bool(v) for v in pools.values())
+        if not llm:
+            llm = bool(store.get("providers"))
+    except Exception:
+        llm = False
 
     def _env_or_dotenv(name: str) -> bool:
         if _os.environ.get(name, "").strip():
@@ -184,6 +194,9 @@ def setup_status():
         except Exception:
             pass
         return False
+
+    if not llm:
+        llm = any(_env_or_dotenv(k) for k in _PROVIDER_ENV_KEYS)
 
     transcript = _env_or_dotenv("TRANSCRIPT_API_KEY")
 
@@ -197,8 +210,9 @@ def setup_status():
         pass
 
     return {
-        "grokConnected": grok,
+        "llmConnected": llm,
+        "grokConnected": llm,  # legacy alias for older dashboard bundles
         "transcriptKeySet": transcript,
         "model": model,
-        "allDone": grok and transcript,
+        "allDone": llm and transcript,
     }
