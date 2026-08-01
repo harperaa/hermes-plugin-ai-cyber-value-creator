@@ -1,0 +1,107 @@
+"""Tool handlers.
+
+Contract: ``handler(args: dict, **kwargs) -> str`` (JSON), never raises.
+"""
+
+from __future__ import annotations
+
+import json
+
+from . import context_store, progress
+from .methodology import (
+    ALL_PHASES,
+    CONTEXT_FIELD_KEYS,
+    CONTEXT_FILE_NAME,
+    ELEVATOR_PITCH_KEY,
+    phase_for_task,
+)
+
+_VALID_FIELDS = [*CONTEXT_FIELD_KEYS, ELEVATOR_PITCH_KEY]
+
+
+def record_company_context(args: dict, **kwargs) -> str:
+    try:
+        field = (args.get("field") or "").strip()
+        content = args.get("content")
+        if field not in _VALID_FIELDS:
+            return json.dumps({"error": f"field must be one of: {', '.join(_VALID_FIELDS)}"})
+        if not isinstance(content, str) or not content.strip():
+            return json.dumps({"error": "content is required"})
+        context_store.apply_company_context({field: content})
+        return json.dumps(
+            {
+                "ok": True,
+                "field": field,
+                "message": (
+                    f'Recorded "{field}" in the shared Company Context '
+                    f"(live in {CONTEXT_FILE_NAME})."
+                ),
+            }
+        )
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
+
+
+def get_company_context(args: dict, **kwargs) -> str:
+    try:
+        ctx = context_store.merged_context()
+        return json.dumps(
+            {
+                "context": ctx,
+                "contextFile": str(context_store.context_file_path()),
+                "offerSummary": context_store.summarize_offer(ctx.get("offer")),
+            }
+        )
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
+
+
+def value_creator_status(args: dict, **kwargs) -> str:
+    try:
+        data = progress.roadmap_data()
+        foundation = next((p for p in data["phases"] if p["foundation"]), None)
+        foundation_done = bool(foundation) and foundation["doneCount"] == foundation["totalCount"]
+        next_step = None
+        for phase in data["phases"]:
+            for task in phase["tasks"]:
+                if task["status"] != "done":
+                    next_step = {"id": task["id"], "phase": phase["name"], "title": task["title"]}
+                    break
+            if next_step:
+                break
+        return json.dumps(
+            {
+                "phases": data["phases"],
+                "totalTasks": data["totalTasks"],
+                "doneTasks": data["doneTasks"],
+                "foundationComplete": foundation_done,
+                "nextStep": next_step,
+            }
+        )
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
+
+
+def start_value_step(args: dict, **kwargs) -> str:
+    try:
+        step_id = (args.get("step_id") or "").strip()
+        if not phase_for_task(step_id):
+            valid = [t.id for p in ALL_PHASES for t in p.tasks]
+            return json.dumps({"error": f"Unknown step_id. Valid: {', '.join(valid)}"})
+        result = progress.open_step_task(step_id)
+        if result.get("error"):
+            return json.dumps(result)
+        return json.dumps(
+            {
+                "ok": True,
+                "kanbanTaskId": result["kanbanTaskId"],
+                "message": (
+                    "Step task created on the kanban board — the gateway dispatcher "
+                    "will run it as a hermes session (ensure `hermes gateway start` "
+                    "is running). Track it on the Kanban tab or the Value Creator "
+                    "roadmap."
+                ),
+            }
+        )
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
