@@ -93,3 +93,37 @@ def register(ctx) -> None:
     ctx.register_hook("kanban_task_claimed", _on_kanban_event("in-progress"))
     ctx.register_hook("kanban_task_completed", _on_kanban_event("done"))
     ctx.register_hook("kanban_task_blocked", _on_kanban_event("in-progress"))
+
+    _sync_indexed_skills()
+
+
+# Skills that must live in the flat ~/.hermes/skills tree: plugin-registered
+# skills are opt-in explicit loads, invisible to the system prompt's
+# <available_skills> index, so a router that exists to be *ambiently
+# discovered* has to be materialized there. The repo copy stays the source of
+# truth; this sync makes the plugin the distribution channel.
+_INDEXED_SKILLS = ("marketing-pro-router",)
+
+
+def _sync_indexed_skills() -> None:
+    try:
+        try:
+            from hermes_constants import get_hermes_home
+            skills_root = get_hermes_home() / "skills"
+        except ImportError:  # outside hermes — nothing to sync into
+            import os
+            skills_root = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes"))) / "skills"
+        for name in _INDEXED_SKILLS:
+            src = _PLUGIN_DIR / "skills" / name / "SKILL.md"
+            if not src.exists():
+                continue
+            dst_dir = skills_root / name
+            dst = dst_dir / "SKILL.md"
+            content = src.read_text(encoding="utf-8")
+            if dst.exists() and dst.read_text(encoding="utf-8") == content:
+                continue
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            dst.write_text(content, encoding="utf-8")
+            logger.info("Synced indexed skill '%s' into %s", name, dst)
+    except Exception:
+        logger.warning("Indexed-skill sync failed", exc_info=True)
