@@ -1195,7 +1195,7 @@
           title: "Hide this checklist",
         }, "Dismiss")),
       h("div", { style: { color: MUTED, fontSize: 13, marginBottom: 6 } },
-        "Two quick connections and your AI business system is fully armed."),
+        "A few quick connections and your AI business system is fully armed."),
       h(StepRow, { num: "1", done: !!(status.llmConnected || status.grokConnected), title: "Connect an AI model provider (powers your agent)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Open the ", h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
@@ -1208,7 +1208,15 @@
           h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "transcriptapi.com"),
           ", then set TRANSCRIPT_API_KEY on the ",
           h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
-          " — it's waiting for you under Custom Keys.")));
+          " — it's waiting for you under Custom Keys.")),
+      h(StepRow, { num: "3", done: !!status.imageGenReady, title: "Enable image generation (thumbnails & beat visuals)" },
+        h("div", { style: { color: MUTED, fontSize: 13 } },
+          "Already covered if you connected xAI Grok in step 1 — images use Grok automatically. ",
+          "Using a different AI provider (Claude, OpenAI, …)? Create a free Google Gemini key at ",
+          h("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "aistudio.google.com/apikey"),
+          " and set GEMINI_API_KEY on the ",
+          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          " under Custom Keys — it's only used when xAI isn't connected.")));
   }
 
   function ValueCreatorPage() {

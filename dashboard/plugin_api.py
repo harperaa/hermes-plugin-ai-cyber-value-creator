@@ -318,6 +318,20 @@ def setup_status():
 
     transcript = _env_or_dotenv("TRANSCRIPT_API_KEY")
 
+    # Image generation readiness: xAI (any credential) is the preferred
+    # provider; GEMINI_API_KEY is the sanctioned fallback when xAI isn't used.
+    xai = _env_or_dotenv("XAI_API_KEY")
+    if not xai:
+        try:
+            store = _json.loads((home / "auth.json").read_text())
+            pools = store.get("credential_pool", {}) or {}
+            xai = any(k.startswith("xai") and isinstance(v, list) and len(v) > 0
+                      for k, v in pools.items())
+        except Exception:
+            xai = False
+    gemini = _env_or_dotenv("GEMINI_API_KEY")
+    image_gen = bool(xai or gemini)
+
     model = ""
     try:
         import yaml  # type: ignore
@@ -331,8 +345,11 @@ def setup_status():
         "llmConnected": llm,
         "grokConnected": llm,  # legacy alias for older dashboard bundles
         "transcriptKeySet": transcript,
+        "xaiConnected": bool(xai),
+        "geminiKeySet": bool(gemini),
+        "imageGenReady": image_gen,
         "model": model,
-        "allDone": llm and transcript,
+        "allDone": llm and transcript and image_gen,
     }
 
 
