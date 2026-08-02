@@ -173,6 +173,22 @@ def sync_progress_from_kanban() -> tuple[dict[str, dict], dict[str, dict]]:
     return progress, links
 
 
+def resolve_kanban_assignee() -> str:
+    """kanban.default_assignee from hermes config, else the base profile.
+
+    Tasks created unassigned sit on the board flagged NEEDS ASSIGNEE and the
+    dispatcher never claims them — every task we create must be born assigned.
+    """
+    try:
+        from hermes_cli.config import load_config
+        val = ((load_config() or {}).get("kanban", {}) or {}).get("default_assignee")
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    except Exception:
+        pass
+    return "default"
+
+
 def open_step_task(task_id: str) -> dict:
     """Create a fresh kanban task for a roadmap step, link it, and put the
     step in progress. The gateway dispatcher spawns the worker session."""
@@ -191,6 +207,7 @@ def open_step_task(task_id: str) -> dict:
                 conn,
                 title=step_task_title(phase, task),
                 body=build_task_description(phase, task, context_dir=str(get_data_dir())),
+                assignee=resolve_kanban_assignee(),
                 created_by="ai-cyber-value-creator",
                 workspace_kind="scratch",
                 skills=skills,
