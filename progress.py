@@ -497,9 +497,13 @@ def answer_question(step_id: str, answer: str) -> dict:
             # counter. The breaker exists to distrust AUTOMATED unblockers;
             # a real answer is the trusted case, and without the reset a
             # multi-question interview trips the limit (2) on question two.
+            # Bump priority too: the dispatcher picks priority DESC, so the
+            # answered task wins the immediate kick below instead of queueing
+            # behind other ready work until a later heartbeat.
             with kb.write_txn(conn):
                 conn.execute(
-                    "UPDATE tasks SET block_recurrences = 0 WHERE id = ?",
+                    "UPDATE tasks SET block_recurrences = 0, "
+                    "    priority = MAX(priority, 10) WHERE id = ?",
                     (kanban_id,),
                 )
             task = kb.get_task(conn, kanban_id)

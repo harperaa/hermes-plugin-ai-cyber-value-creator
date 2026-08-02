@@ -313,8 +313,14 @@ def kanban_answer(body: _KanbanAnswerBody):
             if task is None:
                 raise HTTPException(status_code=404, detail=f"unknown task {body.taskId}")
             kb.add_comment(conn, body.taskId, "user", text)
+            # Reset the breaker AND bump priority so the instant dispatcher
+            # kick below resumes THIS task, not other queued ready work.
             with kb.write_txn(conn):
-                conn.execute("UPDATE tasks SET block_recurrences = 0 WHERE id = ?", (body.taskId,))
+                conn.execute(
+                    "UPDATE tasks SET block_recurrences = 0, "
+                    "    priority = MAX(priority, 10) WHERE id = ?",
+                    (body.taskId,),
+                )
             if getattr(task, "status", "") == "triage":
                 kb.specify_triage_task(conn, body.taskId, author="user")
             else:

@@ -434,7 +434,21 @@
         )
       ),
       h("span", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 } },
-        h(StatusBadge, { status: task.status, color: props.accent }),
+        h("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          (function () {
+            var q = task.pendingQuestion;
+            if (!q || !q.questionTotal || !q.questionNumber) return null;
+            var pct = Math.min(100, Math.round(((q.questionNumber - 1) / q.questionTotal) * 100));
+            return h("span", {
+              className: "acvc-qprogress",
+              title: "Interview progress: question " + q.questionNumber + " of " + q.questionTotal,
+            },
+              h("span", { className: "acvc-qprogress-label" },
+                "Q" + q.questionNumber + "/" + q.questionTotal),
+              h("span", { style: { width: 64, display: "inline-block" } },
+                h(ProgressBar, { pct: pct, color: "#f59e0b" })));
+          })(),
+          h(StatusBadge, { status: task.status, color: props.accent })),
         props.badge ? h("span", { style: { fontSize: 10.5, color: MUTED } }, props.badge) : null,
         h(TaskControl, { task: task, taskActions: props.taskActions })
       )
@@ -474,16 +488,6 @@
     };
 
     return h("div", { className: "acvc-question-card" },
-      (function () {
-        var q = task.pendingQuestion;
-        if (!q.questionTotal || !q.questionNumber) return null;
-        var pct = Math.min(100, Math.round(((q.questionNumber - 1) / q.questionTotal) * 100));
-        return h("div", { className: "acvc-qprogress" },
-          h("div", { className: "acvc-qprogress-label" },
-            "Question " + q.questionNumber + " of " + q.questionTotal),
-          h("div", { className: "acvc-qprogress-track" },
-            h("div", { className: "acvc-qprogress-fill", style: { width: pct + "%" } })));
-      })(),
       h("div", { className: "acvc-question-head" }, "❓ Question for you"),
       h("div", { className: "acvc-question-body" }, renderMarkdown(task.pendingQuestion.question)),
       (function () {
