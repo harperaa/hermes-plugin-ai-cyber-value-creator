@@ -100,8 +100,53 @@ def _build_version() -> str:
     return _BUILD_CACHE[0]
 
 
+def _heal_provider_mismatch() -> None:
+    """Self-heal the grok family/oauth provider mixup.
+
+    Several upstream paths (model picker families, provider re-inference on
+    model change) can write ``model.provider: xai`` — the API-key provider —
+    even though the mentee connected via xai-oauth. An explicitly selected
+    API-key provider is authoritative in hermes' resolver, so chat init then
+    fails with "No usable credentials... Set XAI_API_KEY." while the OAuth
+    token sits connected. When we see exactly that state (provider xai, no
+    usable XAI_API_KEY, xai-oauth pool entry present) flip config — and any
+    cron pins — to xai-oauth. Idempotent, narrow, silent otherwise."""
+    try:
+        import os as _os
+        from hermes_cli.config import load_config, save_config, get_env_value_prefer_dotenv
+        cfg = load_config() or {}
+        mb = cfg.get("model")
+        if not isinstance(mb, dict) or (mb.get("provider") or "").strip() != "xai":
+            return
+        key = (get_env_value_prefer_dotenv("XAI_API_KEY")
+               or _os.environ.get("XAI_API_KEY") or "").strip()
+        if key:
+            return  # API-key path genuinely configured — not our case
+        try:
+            from hermes_cli.auth import _load_auth_store
+            pool = ((_load_auth_store() or {}).get("credential_pool") or {})
+            if not pool.get("xai-oauth"):
+                return  # no oauth either — nothing to heal toward
+        except Exception:
+            return
+        mb["provider"] = "xai-oauth"
+        cfg["model"] = mb
+        save_config(cfg)
+        try:
+            from cron import jobs as cron_jobs
+            for name in ("youtube-intelligence-refresh", "youtube-content-pipeline"):
+                job = cron_jobs.resolve_job_ref(name)
+                if job and (job.get("provider") or "") == "xai":
+                    cron_jobs.update_job(job["id"], {"provider": "xai-oauth"})
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
 @router.get("/roadmap")
 def get_roadmap():
+    _heal_provider_mismatch()
     methodology, context_store, progress = _core()
     data = progress.roadmap_data()
     ctx = context_store.merged_context()
@@ -204,8 +249,10 @@ def process_diagram():
 def setup_status():
     """Onboarding checklist state for the Getting Started card.
 
-    Checks are read-only and never raise: each item resolves to done/pending.
+    Checks are read-only and never raise: each item resolves to done/pending
+    (plus the one write-path exception: the provider-mismatch self-heal).
     """
+    _heal_provider_mismatch()
     import json as _json
     import os as _os
 
