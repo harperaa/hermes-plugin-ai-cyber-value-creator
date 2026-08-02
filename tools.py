@@ -110,15 +110,29 @@ def ask_user_question(args: dict, **kwargs) -> str:
             reason_tag=args.get("reason_tag"),
         )
         if result.get("ok"):
-            result["message"] = (
-                "Question card posted; the task is blocked awaiting the answer. "
-                "NOW: (a) if the user is live in this chat, ask the SAME question "
-                "with the clarify tool (options in `choices`, max 4) so they get "
-                "the quick-select picker; (b) then END YOUR TURN with the COMPLETE "
-                "question — options included — restated verbatim as your final "
-                "chat message. A final message that does not contain the full "
-                "question text is a protocol violation."
-            )
+            if result.get("nativeBlock"):
+                result["message"] = (
+                    "Question card posted. NOW, in this same turn: "
+                    f"(1) call kanban_block(reason={result.get('blockReason', '')!r}, "
+                    "kind='needs_input') — REQUIRED: this spawned worker session "
+                    "must block through the native tool or the board records a "
+                    "protocol violation; (2) END YOUR TURN with the COMPLETE "
+                    "question — options included — restated verbatim as your "
+                    "final chat message. Do NOT call clarify in this spawned "
+                    "worker turn — nobody is attached to this terminal and it "
+                    "would hang until timeout."
+                )
+            else:
+                result["message"] = (
+                    "Question card posted; the task is blocked awaiting the answer. "
+                    "NOW: (a) ONLY if the user's latest message was TYPED here in "
+                    "chat (not the spawn prompt, not a '[via card]' relay), ask the "
+                    "SAME question with the clarify tool (options in `choices`, "
+                    "max 4) for the quick-select picker; (b) then END YOUR TURN "
+                    "with the COMPLETE question — options included — restated "
+                    "verbatim as your final chat message. A final message without "
+                    "the full question text is a protocol violation."
+                )
         return json.dumps(result)
     except Exception as exc:
         return json.dumps({"error": str(exc)})

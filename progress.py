@@ -295,6 +295,8 @@ def record_chat_answer(kanban_task_id: str, answer: str) -> dict:
     restores blocked if the breaker had already pulled the task to triage.
     """
     text = (answer or "").strip()
+    if text.lower().startswith("[via card]"):
+        text = text[len("[via card]"):].strip()
     if not text:
         return {"error": "answer is empty"}
     try:
@@ -359,6 +361,14 @@ def post_question_card(
         body += f"**Question {int(number)} of {int(total)}**\n"
     body += "\n" + q
     tag = (reason_tag or "").strip() or (f"Q{int(number)}" if number else "Q")
+    reason = f"{tag}: waiting for your answer — see the question card."
+    # Dispatcher-spawned workers must block via the NATIVE kanban_block tool:
+    # the harness' stop-guard only recognizes that tool name in the
+    # transcript, and a db-side block sends the worker into a nudge loop
+    # ("tried to exit without kanban_complete/kanban_block").
+    import os
+    in_worker = bool((os.environ.get("HERMES_KANBAN_TASK") or "").strip())
+    native_block = False
     try:
         kb = _kanban()
         with kb.connect_closing() as conn:
@@ -380,14 +390,19 @@ def post_question_card(
                         (kanban_task_id,),
                     )
             elif status != "blocked":
-                kb.block_task(
-                    conn, kanban_task_id,
-                    reason=f"{tag}: waiting for your answer — see the question card.",
-                    kind="needs_input",
-                )
+                if in_worker:
+                    native_block = True
+                else:
+                    kb.block_task(conn, kanban_task_id, reason=reason, kind="needs_input")
     except Exception as exc:
         return {"error": f"could not post the question card: {exc}"}
-    return {"ok": True, "taskId": kanban_task_id, "status": "blocked"}
+    return {
+        "ok": True,
+        "taskId": kanban_task_id,
+        "status": "awaiting_native_block" if native_block else "blocked",
+        "nativeBlock": native_block,
+        "blockReason": reason,
+    }
 
 
 def reset_step(task_id: str) -> dict:
@@ -623,8 +638,20 @@ def _resume_worker_session(session_id: str, message: str, assignee: str, kanban_
         import threading
         import time
         kb = _kanban()
+        try:
+            from hermes_cli.profiles import normalize_profile_name
+            assignee = normalize_profile_name(assignee)
+        except Exception:
+            pass
         env = dict(os.environ)
         env["HERMES_SESSION_SOURCE"] = "kanban"
+        # Give the continuation the worker tool surface: HERMES_KANBAN_TASK
+        # registers the kanban_* tools (check_fn gate) scoped to THIS task
+        # (ownership check), so the session can unblock+complete at interview
+        # end. The stop-guard this enables is already satisfied by the native
+        # kanban_block recorded earlier in the session transcript.
+        env["HERMES_KANBAN_TASK"] = kanban_id
+        env["HERMES_PROFILE"] = assignee
         cmd = [
             *kb._resolve_hermes_argv(),
             "-p", assignee,
@@ -692,8 +719,12 @@ def deliver_answer(kanban_id: str, answer: str, session_id: str | None = None) -
     except Exception as exc:
         return {"error": f"could not deliver the answer: {exc}"}
 
+    # The "[via card]" prefix tells the session this answer was relayed from
+    # a card, not typed in an attached chat — so it must NOT use interactive
+    # prompts (clarify) that would hang a headless continuation.
     sid = session_id or _find_worker_session(kanban_id)
-    if status in ("blocked", "triage") and _resume_worker_session(sid, text, assignee, kanban_id):
+    if status in ("blocked", "triage") and _resume_worker_session(
+            sid, f"[via card] {text}", assignee, kanban_id):
         if status == "triage":
             try:
                 with kb.connect_closing() as conn:
