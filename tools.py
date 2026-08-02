@@ -111,10 +111,13 @@ def ask_user_question(args: dict, **kwargs) -> str:
         )
         if result.get("ok"):
             result["message"] = (
-                "Question card posted and the task is blocked awaiting the answer. "
-                "If the user is live in this chat, now ask the SAME question with "
-                "the clarify tool (options in `choices`, max 4) for quick-select; "
-                "otherwise end your turn by restating the question in chat."
+                "Question card posted; the task is blocked awaiting the answer. "
+                "NOW: (a) if the user is live in this chat, ask the SAME question "
+                "with the clarify tool (options in `choices`, max 4) so they get "
+                "the quick-select picker; (b) then END YOUR TURN with the COMPLETE "
+                "question — options included — restated verbatim as your final "
+                "chat message. A final message that does not contain the full "
+                "question text is a protocol violation."
             )
         return json.dumps(result)
     except Exception as exc:

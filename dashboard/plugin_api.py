@@ -299,35 +299,12 @@ class _KanbanAnswerBody(BaseModel):
 @router.post("/kanban-answer")
 def kanban_answer(body: _KanbanAnswerBody):
     """Generic question-card answer for ANY kanban task (used by the patched
-    drawer answer box): posts the comment, resets the block-loop trust
-    counter (a human answered — the breaker only distrusts automation),
-    unblocks/recovers, and kicks the dispatcher."""
-    text = (body.answer or "").strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="answer is empty")
+    drawer answer box). Chat-authoritative: records the answer and resumes
+    the task's existing worker session with it as the next chat message;
+    falls back to unblock + dispatcher respawn when no session is resumable."""
     _m, _c, progress = _core()
-    kb = progress._kanban()
-    try:
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, body.taskId)
-            if task is None:
-                raise HTTPException(status_code=404, detail=f"unknown task {body.taskId}")
-            kb.add_comment(conn, body.taskId, "user", text)
-            # Reset the breaker AND bump priority so the instant dispatcher
-            # kick below resumes THIS task, not other queued ready work.
-            with kb.write_txn(conn):
-                conn.execute(
-                    "UPDATE tasks SET block_recurrences = 0, "
-                    "    priority = MAX(priority, 10) WHERE id = ?",
-                    (body.taskId,),
-                )
-            if getattr(task, "status", "") == "triage":
-                kb.specify_triage_task(conn, body.taskId, author="user")
-            else:
-                kb.unblock_task(conn, body.taskId)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"answer failed: {exc}")
-    progress.kick_dispatcher()
-    return {"ok": True, "taskId": body.taskId}
+    result = progress.deliver_answer(body.taskId, body.answer)
+    if result.get("error"):
+        code = 404 if "unknown kanban task" in result["error"] else 400
+        raise HTTPException(status_code=code, detail=result["error"])
+    return result

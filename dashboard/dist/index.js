@@ -337,11 +337,14 @@
     var armedSt = useState(false); var resetArmed = armedSt[0], setResetArmed = armedSt[1];
     if (task.kanban && task.kanban.taskId) {
       var els = [];
-      var busyStates = { running: 1, ready: 1, todo: 1 };
+      // "blocked" with NO open question = the answer was delivered and the
+      // session is working on the next one (chat-authoritative flow) — that
+      // is a busy state too, not a waiting state.
+      var busyStates = { running: 1, ready: 1, todo: 1, blocked: 1 };
       if (busyStates[task.kanban.status] && !task.pendingQuestion && task.status !== "done") {
         els.push(h("span", { key: "spin", className: "acvc-working", title: "The agent is working this step — stand by" },
           h("span", { className: "acvc-spinner" }),
-          task.kanban.status === "running" ? "agent working…" : "queued…"));
+          task.kanban.status === "ready" || task.kanban.status === "todo" ? "queued…" : "agent working…"));
       }
       if (task.kanban.sessionId) {
         var chatHref = "/chat?resume=" + encodeURIComponent(task.kanban.sessionId);
