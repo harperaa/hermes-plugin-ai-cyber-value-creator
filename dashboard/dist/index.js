@@ -23,15 +23,20 @@
   // (Get-key links + in-browser OAuth). Self-disarming; never fires again.
   try {
     if (!localStorage.getItem("acvc-first-login-redirect")) {
-      localStorage.setItem("acvc-first-login-redirect", "1");
       SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/setup-status")
         .then(function (s) {
-          if (s && !s.llmConnected && !s.grokConnected &&
-              window.location.pathname !== "/keys") {
-            window.location.assign("/keys");
+          if (!s) return; // leave the one-shot unburned on bad data
+          if (!s.llmConnected && !s.grokConnected) {
+            localStorage.setItem("acvc-first-login-redirect", "1");
+            if (window.location.pathname !== "/keys") {
+              window.location.assign("/keys");
+            }
+          } else {
+            // setup already complete — disarm without redirecting
+            localStorage.setItem("acvc-first-login-redirect", "1");
           }
         })
-        .catch(function () {});
+        .catch(function () { /* fetch failed — keep the shot for next load */ });
     }
   } catch (e) { /* storage unavailable — skip the nicety */ }
 

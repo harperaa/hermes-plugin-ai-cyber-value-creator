@@ -178,9 +178,9 @@ def setup_status():
     try:
         store = _json.loads((home / "auth.json").read_text())
         pools = store.get("credential_pool", {}) or {}
-        llm = any(bool(v) for v in pools.values())
-        if not llm:
-            llm = bool(store.get("providers"))
+        # Only non-empty credential lists count — the "providers" section is
+        # bookkeeping state and can be truthy with zero real credentials.
+        llm = any(isinstance(v, list) and len(v) > 0 for v in pools.values())
     except Exception:
         llm = False
 
