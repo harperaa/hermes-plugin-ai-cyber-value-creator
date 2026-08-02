@@ -100,6 +100,30 @@ def _build_version() -> str:
     return _BUILD_CACHE[0]
 
 
+def _ensure_provider_timeouts() -> None:
+    """Grok reasoning models sit silent for minutes mid-thought; the default
+    stream stale-timeout kills those streams and analysis workers die in
+    retry loops. Fresh volumes get 900s from the seed; this backfills
+    EXISTING volumes on redeploy. Only sets when absent — a mentee's own
+    explicit value is never overwritten."""
+    try:
+        from hermes_cli.config import load_config, save_config
+        cfg = load_config() or {}
+        providers = cfg.setdefault("providers", {})
+        changed = False
+        for pid in ("xai-oauth", "xai"):
+            entry = providers.setdefault(pid, {})
+            if not isinstance(entry, dict):
+                continue
+            if "stale_timeout_seconds" not in entry:
+                entry["stale_timeout_seconds"] = 900
+                changed = True
+        if changed:
+            save_config(cfg)
+    except Exception:
+        pass
+
+
 def _heal_provider_mismatch() -> None:
     """Self-heal the grok family/oauth provider mixup.
 
@@ -147,6 +171,7 @@ def _heal_provider_mismatch() -> None:
 @router.get("/roadmap")
 def get_roadmap():
     _heal_provider_mismatch()
+    _ensure_provider_timeouts()
     methodology, context_store, progress = _core()
     data = progress.roadmap_data()
     ctx = context_store.merged_context()
@@ -253,6 +278,7 @@ def setup_status():
     (plus the one write-path exception: the provider-mismatch self-heal).
     """
     _heal_provider_mismatch()
+    _ensure_provider_timeouts()
     import json as _json
     import os as _os
 
