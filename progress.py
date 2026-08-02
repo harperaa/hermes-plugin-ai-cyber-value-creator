@@ -370,7 +370,7 @@ def get_pending_question(step_id: str) -> dict | None:
         kb = _kanban()
         with kb.connect_closing() as conn:
             task = kb.get_task(conn, kanban_id)
-            if task is None or getattr(task, "status", "") != "blocked":
+            if task is None or getattr(task, "status", "") not in ("blocked", "triage"):
                 return None
             comments = kb.list_comments(conn, kanban_id)
     except Exception:
@@ -401,7 +401,22 @@ def answer_question(step_id: str, answer: str) -> dict:
         kb = _kanban()
         with kb.connect_closing() as conn:
             kb.add_comment(conn, kanban_id, "user", text)
-            kb.unblock_task(conn, kanban_id)
+            # A HUMAN answered — reset the block-loop breaker's recurrence
+            # counter. The breaker exists to distrust AUTOMATED unblockers;
+            # a real answer is the trusted case, and without the reset a
+            # multi-question interview trips the limit (2) on question two.
+            with kb.write_txn(conn):
+                conn.execute(
+                    "UPDATE tasks SET block_recurrences = 0 WHERE id = ?",
+                    (kanban_id,),
+                )
+            task = kb.get_task(conn, kanban_id)
+            status = getattr(task, "status", "")
+            if status == "triage":
+                # Breaker already routed it — recover: promote back to ready.
+                kb.specify_triage_task(conn, kanban_id, author="user")
+            else:
+                kb.unblock_task(conn, kanban_id)
     except Exception as exc:
         return {"error": f"could not deliver the answer: {exc}"}
     kick_dispatcher()  # resume the worker now, not at the next tick

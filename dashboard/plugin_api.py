@@ -278,3 +278,39 @@ def pin_cron():
         except Exception as exc:
             pinned.append({"name": name, "error": str(exc)})
     return {"ok": True, "provider": provider, "model": model, "jobs": pinned}
+
+
+class _KanbanAnswerBody(BaseModel):
+    taskId: str
+    answer: str
+
+
+@router.post("/kanban-answer")
+def kanban_answer(body: _KanbanAnswerBody):
+    """Generic question-card answer for ANY kanban task (used by the patched
+    drawer answer box): posts the comment, resets the block-loop trust
+    counter (a human answered — the breaker only distrusts automation),
+    unblocks/recovers, and kicks the dispatcher."""
+    text = (body.answer or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="answer is empty")
+    _m, _c, progress = _core()
+    kb = progress._kanban()
+    try:
+        with kb.connect_closing() as conn:
+            task = kb.get_task(conn, body.taskId)
+            if task is None:
+                raise HTTPException(status_code=404, detail=f"unknown task {body.taskId}")
+            kb.add_comment(conn, body.taskId, "user", text)
+            with kb.write_txn(conn):
+                conn.execute("UPDATE tasks SET block_recurrences = 0 WHERE id = ?", (body.taskId,))
+            if getattr(task, "status", "") == "triage":
+                kb.specify_triage_task(conn, body.taskId, author="user")
+            else:
+                kb.unblock_task(conn, body.taskId)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"answer failed: {exc}")
+    progress.kick_dispatcher()
+    return {"ok": True, "taskId": body.taskId}
