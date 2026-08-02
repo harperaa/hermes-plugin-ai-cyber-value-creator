@@ -61,7 +61,7 @@
         G + ' li:has(> a[href="/roadmap"]){order:-2;}' +
         G + ' li:has(> a[href="/youtube"]){order:-1;}' +
         G + ' li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
-        G + ' li:has(> a[href="/kanban"])::before{content:"PLUGINS";}' +
+        G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
         G + ' li:has(> a[href="/roadmap"])::before,' + G + ' li:has(> a[href="/kanban"])::before{' +
         'display:block;padding:10px 20px 4px;font-size:11px;letter-spacing:0.12em;' +
         'font-weight:600;color:var(--color-muted-foreground,#9aa0b4);}' +
