@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -91,6 +92,10 @@ def get_roadmap():
         "contextFile": str(context_store.context_file_path()),
     }
     data["centerLabel"] = methodology.CENTER_LABEL
+    # Version footer: plugin semver always; image build tag when running in
+    # the distribution container (HPD_VERSION baked at docker build).
+    data["version"] = getattr(methodology, "PLUGIN_VERSION", "")
+    data["build"] = (os.environ.get("HPD_VERSION") or "").strip()
     return data
 
 

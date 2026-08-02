@@ -358,11 +358,14 @@
         : null;
       if (task.awaitingAnswer && task.status !== "done") {
         // Q&A lives in the chat thread only — the board's job is to send
-        // the user there the moment it's their turn.
+        // the user there the moment it's their turn. Until a worker session
+        // exists (e.g. no provider connected yet), fall back to the task
+        // drawer so the chip always lands somewhere useful.
+        var answerHref = chatHref || ("/kanban#task=" + encodeURIComponent(task.kanban.taskId));
         els.push(h("a", {
           key: "answer",
-          href: chatHref || "#",
-          onClick: function (e) { e.preventDefault(); if (chatHref) window.location.assign(chatHref); },
+          href: answerHref,
+          onClick: function (e) { e.preventDefault(); window.location.assign(answerHref); },
           title: "The agent asked you a question — open the chat thread to answer",
           className: "acvc-answer-chip",
         }, "❓ your turn — answer in chat ↗"));
@@ -1370,7 +1373,11 @@
           },
         },
           h("span", null, "Tip: click a sub-task to cycle To-Do → In-Progress → Done. \"+ Task\" runs the step as a hermes session (needs the gateway running)."),
-          h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress"))
+          h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress")),
+
+        h("div", { className: "acvc-version", style: { marginTop: 14, textAlign: "center", fontSize: 11, color: MUTED } },
+          "AI Cyber Value Creator v" + (data.version || "?") +
+          (data.build ? " · build " + data.build : ""))
       )
     );
   }
