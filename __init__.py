@@ -71,6 +71,12 @@ def register(ctx) -> None:
         schema=schemas.RECORD_USER_ANSWER,
         handler=tools.record_user_answer,
     )
+    ctx.register_tool(
+        name="ask_user_question",
+        toolset="value_creator",
+        schema=schemas.ASK_USER_QUESTION,
+        handler=tools.ask_user_question,
+    )
 
     ctx.register_command(
         "value-creator",

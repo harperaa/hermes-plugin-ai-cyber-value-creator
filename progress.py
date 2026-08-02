@@ -320,6 +320,65 @@ def record_chat_answer(kanban_task_id: str, answer: str) -> dict:
     return {"ok": True, "taskId": kanban_task_id, "status": "blocked"}
 
 
+def post_question_card(
+    kanban_task_id: str,
+    question: str,
+    number: int | None = None,
+    total: int | None = None,
+    lock_in_note: str | None = None,
+    reason_tag: str | None = None,
+) -> dict:
+    """Post a protocol-correct question card and block the task — ONE call.
+
+    Composes the marker + progress line + question comment, posts the optional
+    lock-in note as a SEPARATE plain comment (never inside the card), and
+    blocks with kind=needs_input unless the task is already blocked (the live
+    chat path keeps tasks blocked between questions). Registered as the
+    ``ask_user_question`` tool so it works in dispatcher-spawned workers AND
+    resumed chat sessions — hermes' native kanban tools only exist in the
+    former, which otherwise sends chat sessions hunting for a fallback.
+    """
+    q = (question or "").strip()
+    if not q:
+        return {"error": "question is empty"}
+    if q.startswith(QUESTION_MARKER):
+        q = q[len(QUESTION_MARKER):].strip()
+    body = QUESTION_MARKER + "\n"
+    if number and total:
+        body += f"**Question {int(number)} of {int(total)}**\n"
+    body += "\n" + q
+    tag = (reason_tag or "").strip() or (f"Q{int(number)}" if number else "Q")
+    try:
+        kb = _kanban()
+        with kb.connect_closing() as conn:
+            task = kb.get_task(conn, kanban_task_id)
+            if task is None:
+                return {"error": f"unknown kanban task {kanban_task_id}"}
+            author = getattr(task, "assignee", None) or "default"
+            note = (lock_in_note or "").strip()
+            if note:
+                kb.add_comment(conn, kanban_task_id, author, note)
+            kb.add_comment(conn, kanban_task_id, author, body)
+            status = getattr(task, "status", "")
+            if status == "triage":
+                # Restore the interview's waiting state without a new block event.
+                with kb.write_txn(conn):
+                    conn.execute(
+                        "UPDATE tasks SET status = 'blocked', block_kind = 'needs_input' "
+                        "WHERE id = ?",
+                        (kanban_task_id,),
+                    )
+            elif status != "blocked":
+                kb.block_task(
+                    conn, kanban_task_id,
+                    reason=f"{tag}: waiting for your answer — see the question card.",
+                    kind="needs_input",
+                )
+    except Exception as exc:
+        return {"error": f"could not post the question card: {exc}"}
+    return {"ok": True, "taskId": kanban_task_id, "status": "blocked"}
+
+
 def reset_step(task_id: str) -> dict:
     """Restart a step from scratch: archive its kanban task (killing the old
     thread), clear the values its interview locked into the company context,

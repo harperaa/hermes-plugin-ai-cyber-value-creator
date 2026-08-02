@@ -99,6 +99,28 @@ def record_user_answer(args: dict, **kwargs) -> str:
         return json.dumps({"error": str(exc)})
 
 
+def ask_user_question(args: dict, **kwargs) -> str:
+    try:
+        result = progress.post_question_card(
+            (args.get("task_id") or "").strip(),
+            args.get("question") or "",
+            number=args.get("question_number"),
+            total=args.get("question_total"),
+            lock_in_note=args.get("lock_in_note"),
+            reason_tag=args.get("reason_tag"),
+        )
+        if result.get("ok"):
+            result["message"] = (
+                "Question card posted and the task is blocked awaiting the answer. "
+                "If the user is live in this chat, now ask the SAME question with "
+                "the clarify tool (options in `choices`, max 4) for quick-select; "
+                "otherwise end your turn by restating the question in chat."
+            )
+        return json.dumps(result)
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
+
+
 def start_value_step(args: dict, **kwargs) -> str:
     try:
         step_id = (args.get("step_id") or "").strip()
