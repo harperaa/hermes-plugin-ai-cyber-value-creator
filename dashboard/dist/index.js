@@ -521,7 +521,7 @@
     var genBusy = genSt[0], setGenBusy = genSt[1];
     var genErrSt = useState(null);
     var genErr = genErrSt[0], setGenErr = genErrSt[1];
-    var c = useCollapsible("acvc-context-open");
+    var c = useCollapsible("acvc-context-open", false);
     var open = c[0], toggleOpen = c[1];
     var collapsedSt = useState(function () {
       try { return JSON.parse(window.localStorage.getItem("acvc-context-sections") || "{}"); }
