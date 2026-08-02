@@ -70,6 +70,28 @@ def _core():
 router = APIRouter()
 
 
+_COMMIT_CACHE: list = []
+
+
+def _plugin_commit() -> str:
+    """Short git commit of the plugin checkout (dev installs only) — cached;
+    empty in the container where the plugin ships without .git."""
+    if not _COMMIT_CACHE:
+        commit = ""
+        try:
+            import subprocess
+            from pathlib import Path
+            commit = subprocess.run(
+                ["git", "-C", str(Path(__file__).resolve().parent.parent),
+                 "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True, timeout=3,
+            ).stdout.strip()
+        except Exception:
+            commit = ""
+        _COMMIT_CACHE.append(commit)
+    return _COMMIT_CACHE[0]
+
+
 @router.get("/roadmap")
 def get_roadmap():
     methodology, context_store, progress = _core()
@@ -92,10 +114,12 @@ def get_roadmap():
         "contextFile": str(context_store.context_file_path()),
     }
     data["centerLabel"] = methodology.CENTER_LABEL
-    # Version footer: plugin semver always; image build tag when running in
-    # the distribution container (HPD_VERSION baked at docker build).
+    # Version footer: in the distribution container the release build tag
+    # (HPD_VERSION, YYYY.MMDD.HHMM — baked at docker build) IS the version;
+    # in a dev checkout fall back to plugin semver + git commit.
     data["version"] = getattr(methodology, "PLUGIN_VERSION", "")
     data["build"] = (os.environ.get("HPD_VERSION") or "").strip()
+    data["commit"] = _plugin_commit()
     return data
 
 

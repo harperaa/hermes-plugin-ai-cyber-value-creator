@@ -1376,8 +1376,10 @@
           h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress")),
 
         h("div", { className: "acvc-version", style: { marginTop: 14, textAlign: "center", fontSize: 11, color: MUTED } },
-          "AI Cyber Value Creator v" + (data.version || "?") +
-          (data.build ? " · build " + data.build : ""))
+          data.build
+            ? "AI Cyber Value Creator v" + data.build
+            : "AI Cyber Value Creator v" + (data.version || "?") +
+              (data.commit ? " (" + data.commit + ")" : ""))
       )
     );
   }
