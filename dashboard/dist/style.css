@@ -344,3 +344,34 @@
     display: none;
   }
 }
+
+/* Question card — inline user-input card under a blocked step row */
+.acvc-question-card {
+  margin: 2px 0 10px 44px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
+  border-left: 3px solid #f59e0b;
+  border-radius: 8px;
+  background: color-mix(in srgb, #f59e0b 7%, var(--color-card, #1a1a2e));
+}
+.acvc-question-head {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #f59e0b;
+  margin-bottom: 6px;
+}
+.acvc-question-body { font-size: 13.5px; margin-bottom: 8px; }
+.acvc-question-body p { margin: 4px 0; }
+.acvc-question-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-foreground, #e7e7f0);
+  background: var(--color-input, #0f0f1c);
+  border: 1px solid var(--color-border, #2b2b44);
+  border-radius: 6px;
+}

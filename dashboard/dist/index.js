@@ -334,28 +334,21 @@
     var task = props.task;
     var busy = props.taskActions.busyTaskId === task.id;
     if (task.kanban && task.kanban.taskId) {
-      var links = [
-        h("a", {
-          key: "kb",
-          href: "/kanban",
-          onClick: function (e) { e.preventDefault(); window.location.assign("/kanban"); },
-          title: "Open the kanban board (task " + task.kanban.taskId + " — " + (task.kanban.status || "open") + ")",
-          className: "acvc-link",
-        }, "kanban ↗"),
-      ];
+      // The step's conversation thread is the destination — not the board.
       if (task.kanban.sessionId) {
-        links.push(h("a", {
-          key: "chat",
-          href: "/chat?resume=" + encodeURIComponent(task.kanban.sessionId),
-          onClick: function (e) {
-            e.preventDefault();
-            window.location.assign("/chat?resume=" + encodeURIComponent(task.kanban.sessionId));
-          },
+        var chatHref = "/chat?resume=" + encodeURIComponent(task.kanban.sessionId);
+        return h("a", {
+          href: chatHref,
+          onClick: function (e) { e.preventDefault(); window.location.assign(chatHref); },
           title: "Open this step's conversation thread",
           className: "acvc-link",
-        }, "thread ↗"));
+        }, "chat ↗");
       }
-      return h("span", { style: { display: "flex", gap: 8 } }, links);
+      return h("span", {
+        className: "acvc-chip",
+        title: "Task " + task.kanban.taskId + " (" + (task.kanban.status || "queued") +
+               ") — the chat link appears when the worker claims it",
+      }, "starting…");
     }
     return h("button", {
       onClick: function () { props.taskActions.onCreateTask(task.id); },
@@ -372,7 +365,7 @@
   function TaskRow(props) {
     var task = props.task;
     var done = task.status === "done";
-    return h("div", { className: "acvc-task-row", style: { opacity: props.busy ? 0.6 : 1 } },
+    return h(React.Fragment, null, h("div", { className: "acvc-task-row", style: { opacity: props.busy ? 0.6 : 1 } },
       h("button", {
         onClick: props.onClick,
         disabled: props.busy,
@@ -412,7 +405,51 @@
         props.badge ? h("span", { style: { fontSize: 10.5, color: MUTED } }, props.badge) : null,
         h(TaskControl, { task: task, taskActions: props.taskActions })
       )
-    );
+    ), h(QuestionCard, { task: task, onAnswered: props.taskActions && props.taskActions.refresh }));
+  }
+
+  // Inline question card — rendered under a step row when the worker has
+  // posted a "### ❓ QUESTION FOR YOU" comment and blocked (needs_input).
+  // Answering posts the comment, unblocks, and the worker resumes at once.
+  function QuestionCard(props) {
+    var task = props.task;
+    var st = useState("");
+    var answer = st[0], setAnswer = st[1];
+    var busySt = useState(false);
+    var busy = busySt[0], setBusy = busySt[1];
+    var errSt = useState(null);
+    var err = errSt[0], setErr = errSt[1];
+    if (!task.pendingQuestion) return null;
+
+    var submit = function () {
+      if (!answer.trim() || busy) return;
+      setBusy(true); setErr(null);
+      postJSON("/answer-step", { stepId: task.id, answer: answer })
+        .then(function () { setAnswer(""); setBusy(false); if (props.onAnswered) props.onAnswered(); })
+        .catch(function (e) { setErr(String((e && e.message) || e)); setBusy(false); });
+    };
+
+    return h("div", { className: "acvc-question-card" },
+      h("div", { className: "acvc-question-head" }, "❓ Question for you"),
+      h("div", { className: "acvc-question-body" }, renderMarkdown(task.pendingQuestion.question)),
+      h("textarea", {
+        className: "acvc-question-input",
+        placeholder: "Type your answer… (the agent resumes as soon as you send)",
+        value: answer,
+        rows: 3,
+        disabled: busy,
+        onChange: function (e) { setAnswer(e.target.value); },
+        onKeyDown: function (e) {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
+        },
+      }),
+      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } },
+        err ? h("span", { style: { color: "#ef4444", fontSize: 12.5 } }, err) : h("span", null),
+        h("button", {
+          className: "acvc-task-btn",
+          onClick: submit,
+          disabled: busy || !answer.trim(),
+        }, busy ? "Sending…" : "Send answer")));
   }
 
   // -------------------------------------------------------------------------
@@ -484,25 +521,15 @@
   function taskLinkEl(taskById, taskId, label) {
     var t = taskById[taskId];
     if (!t || !t.kanban || !t.kanban.taskId) return null;
-    var els = [];
-    if (t.kanban.sessionId) {
-      var href = "/chat?resume=" + encodeURIComponent(t.kanban.sessionId);
-      els.push(h("a", {
-        key: "thread",
-        href: href,
-        onClick: function (e) { e.preventDefault(); window.location.assign(href); },
-        className: "acvc-link",
-        title: 'Open the conversation thread for "' + label + '"',
-      }, "thread ↗"));
-    }
-    els.push(h("a", {
-      key: "kb",
-      href: "/kanban",
-      onClick: function (e) { e.preventDefault(); window.location.assign("/kanban"); },
+    if (!t.kanban.sessionId) return null; // chat link appears once claimed
+    var href = "/chat?resume=" + encodeURIComponent(t.kanban.sessionId);
+    return [h("a", {
+      key: "thread",
+      href: href,
+      onClick: function (e) { e.preventDefault(); window.location.assign(href); },
       className: "acvc-link",
-      title: 'Open the kanban board (task for "' + label + '")',
-    }, "kanban ↗"));
-    return els;
+      title: 'Open the conversation thread for "' + label + '"',
+    }, "chat ↗")];
   }
 
   function CompanyContextPanel(props) {
@@ -1195,7 +1222,7 @@
     var taskById = {};
     phases.forEach(function (p) { p.tasks.forEach(function (t) { taskById[t.id] = t; }); });
 
-    var taskActions = { busyTaskId: busyTaskCreate, onCreateTask: handleCreateTask };
+    var taskActions = { busyTaskId: busyTaskCreate, onCreateTask: handleCreateTask, refresh: refresh };
 
     return h("div", { className: "acvc-page", style: { background: PAGE_BG, minHeight: "100%", color: TEXT } },
       h("div", { style: { padding: "28px 24px 48px", maxWidth: 1100, margin: "0 auto" } },

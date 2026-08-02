@@ -267,6 +267,9 @@ def roadmap_data() -> dict:
         for task in phase.tasks:
             p = progress.get(task.id, {})
             link = links.get(task.id) or None
+            pending = None
+            if link and link.get("kanbanStatus") == "blocked":
+                pending = get_pending_question(task.id)
             tasks.append(
                 {
                     "id": task.id,
@@ -274,6 +277,7 @@ def roadmap_data() -> dict:
                     "blurb": task.blurb,
                     "status": p.get("status", "todo"),
                     "updatedAt": p.get("updatedAt"),
+                    "pendingQuestion": pending,
                     "kanban": (
                         {
                             "taskId": link.get("kanbanTaskId"),
@@ -306,3 +310,63 @@ def roadmap_data() -> dict:
         "totalTasks": len(ALL_TASK_IDS),
         "doneTasks": done_total,
     }
+
+
+# ---------------------------------------------------------------------------
+# Question cards — the foundation briefs instruct workers to post a comment
+# starting with QUESTION_MARKER and then block (kind=needs_input). The
+# roadmap surfaces that comment as an inline card; answering posts a comment
+# and unblocks so the worker resumes immediately.
+# ---------------------------------------------------------------------------
+
+QUESTION_MARKER = "### ❓ QUESTION FOR YOU"
+
+
+def get_pending_question(step_id: str) -> dict | None:
+    """Newest question-card comment for a step whose task is blocked."""
+    links = get_task_links()
+    link = links.get(step_id) or {}
+    kanban_id = link.get("kanbanTaskId")
+    if not kanban_id:
+        return None
+    try:
+        kb = _kanban()
+        with kb.connect_closing() as conn:
+            task = kb.get_task(conn, kanban_id)
+            if task is None or getattr(task, "status", "") != "blocked":
+                return None
+            comments = kb.list_comments(conn, kanban_id)
+    except Exception:
+        return None
+    for c in reversed(comments):
+        body = (getattr(c, "body", "") or "").strip()
+        if body.startswith(QUESTION_MARKER):
+            question = body[len(QUESTION_MARKER):].strip()
+            return {
+                "taskId": kanban_id,
+                "question": question,
+                "askedAt": getattr(c, "created_at", None),
+                "author": getattr(c, "author", ""),
+            }
+    return None
+
+
+def answer_question(step_id: str, answer: str) -> dict:
+    """Post the user's answer as a comment, unblock, and kick the dispatcher."""
+    text = (answer or "").strip()
+    if not text:
+        return {"error": "answer is empty"}
+    links = get_task_links()
+    kanban_id = (links.get(step_id) or {}).get("kanbanTaskId")
+    if not kanban_id:
+        return {"error": f"no kanban task linked to step {step_id}"}
+    try:
+        kb = _kanban()
+        with kb.connect_closing() as conn:
+            kb.add_comment(conn, kanban_id, "user", text)
+            kb.unblock_task(conn, kanban_id)
+    except Exception as exc:
+        return {"error": f"could not deliver the answer: {exc}"}
+    kick_dispatcher()  # resume the worker now, not at the next tick
+    mark_step_status(step_id, "in-progress")
+    return {"ok": True, "taskId": kanban_id}

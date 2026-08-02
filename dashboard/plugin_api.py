@@ -216,3 +216,20 @@ def setup_status():
         "model": model,
         "allDone": llm and transcript,
     }
+
+
+class _AnswerBody(BaseModel):
+    stepId: str
+    answer: str
+
+
+@router.post("/answer-step")
+def answer_step(body: _AnswerBody):
+    """Deliver the user's answer to a blocked step's question card: posts the
+    comment, unblocks the task, and kicks the dispatcher so the worker
+    resumes immediately."""
+    _m, _c, progress = _core()
+    result = progress.answer_question(body.stepId, body.answer)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
