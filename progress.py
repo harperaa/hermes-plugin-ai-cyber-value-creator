@@ -131,6 +131,34 @@ def _step_status_from_kanban(kanban_status: str | None, current: str) -> str:
     return current
 
 
+def _find_worker_session(kanban_task_id: str) -> str | None:
+    """Locate the worker session for a kanban task by searching session
+    messages for the task id (the worker's opening query contains
+    "work kanban task <id>"). tasks.session_id only records the ORIGINATING
+    session, so claimed tasks need this reverse lookup. Read-only."""
+    try:
+        import os
+        import sqlite3
+        try:
+            from hermes_constants import get_hermes_home
+            db = str(get_hermes_home() / "state.db")
+        except ImportError:
+            db = os.path.expanduser(
+                os.path.join(os.environ.get("HERMES_HOME", "~/.hermes"), "state.db"))
+        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT session_id FROM messages WHERE content LIKE ? "
+                "ORDER BY id DESC LIMIT 1",
+                (f"%{kanban_task_id}%",),
+            ).fetchone()
+        finally:
+            conn.close()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def sync_progress_from_kanban() -> tuple[dict[str, dict], dict[str, dict]]:
     """Reconcile links + derive each linked step's status from its kanban task.
     Returns (progress, links) after any updates were persisted."""
@@ -152,6 +180,9 @@ def sync_progress_from_kanban() -> tuple[dict[str, dict], dict[str, dict]]:
                 # Surface the worker session id so the dashboard can deep-link
                 # the conversation thread (/chat?resume=<session_id>).
                 sid = getattr(task, "session_id", None)
+                if not sid and not link.get("sessionId") and task.status in (
+                        "running", "blocked", "done", "in_review"):
+                    sid = _find_worker_session(kid)
                 if sid and link.get("sessionId") != sid:
                     link["sessionId"] = sid
                     changed = True

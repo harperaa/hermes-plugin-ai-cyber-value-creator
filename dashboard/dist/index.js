@@ -334,21 +334,32 @@
     var task = props.task;
     var busy = props.taskActions.busyTaskId === task.id;
     if (task.kanban && task.kanban.taskId) {
-      // The step's conversation thread is the destination — not the board.
+      var els = [];
       if (task.kanban.sessionId) {
         var chatHref = "/chat?resume=" + encodeURIComponent(task.kanban.sessionId);
-        return h("a", {
+        els.push(h("a", {
+          key: "chat",
           href: chatHref,
           onClick: function (e) { e.preventDefault(); window.location.assign(chatHref); },
           title: "Open this step's conversation thread",
           className: "acvc-link",
-        }, "chat ↗");
+        }, "chat ↗"));
+      } else {
+        els.push(h("span", {
+          key: "starting",
+          className: "acvc-chip",
+          title: "The chat link appears when the worker posts its first turn",
+        }, "starting…"));
       }
-      return h("span", {
-        className: "acvc-chip",
-        title: "Task " + task.kanban.taskId + " (" + (task.kanban.status || "queued") +
-               ") — the chat link appears when the worker claims it",
-      }, "starting…");
+      var kbHref = "/kanban#task=" + encodeURIComponent(task.kanban.taskId);
+      els.push(h("a", {
+        key: "kb",
+        href: kbHref,
+        onClick: function (e) { e.preventDefault(); window.location.assign(kbHref); },
+        title: "Task " + task.kanban.taskId + " (" + (task.kanban.status || "open") + ") on the kanban board",
+        className: "acvc-link",
+      }, "task ↗"));
+      return h("span", { style: { display: "flex", gap: 8 } }, els);
     }
     return h("button", {
       onClick: function () { props.taskActions.onCreateTask(task.id); },
@@ -521,15 +532,26 @@
   function taskLinkEl(taskById, taskId, label) {
     var t = taskById[taskId];
     if (!t || !t.kanban || !t.kanban.taskId) return null;
-    if (!t.kanban.sessionId) return null; // chat link appears once claimed
-    var href = "/chat?resume=" + encodeURIComponent(t.kanban.sessionId);
-    return [h("a", {
-      key: "thread",
-      href: href,
-      onClick: function (e) { e.preventDefault(); window.location.assign(href); },
+    var els = [];
+    if (t.kanban.sessionId) {
+      var href = "/chat?resume=" + encodeURIComponent(t.kanban.sessionId);
+      els.push(h("a", {
+        key: "thread",
+        href: href,
+        onClick: function (e) { e.preventDefault(); window.location.assign(href); },
+        className: "acvc-link",
+        title: 'Open the conversation thread for "' + label + '"',
+      }, "chat ↗"));
+    }
+    var kbHref = "/kanban#task=" + encodeURIComponent(t.kanban.taskId);
+    els.push(h("a", {
+      key: "kb",
+      href: kbHref,
+      onClick: function (e) { e.preventDefault(); window.location.assign(kbHref); },
       className: "acvc-link",
-      title: 'Open the conversation thread for "' + label + '"',
-    }, "chat ↗")];
+      title: 'Open the kanban task for "' + label + '"',
+    }, "task ↗"));
+    return els;
   }
 
   function CompanyContextPanel(props) {
