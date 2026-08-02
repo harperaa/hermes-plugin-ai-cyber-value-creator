@@ -422,6 +422,17 @@
   // Inline question card — rendered under a step row when the worker has
   // posted a "### ❓ QUESTION FOR YOU" comment and blocked (needs_input).
   // Answering posts the comment, unblocks, and the worker resumes at once.
+  // Lines like "- Option A" / "A) Option" in a question render as clickable
+  // choices that prefill the answer (still editable before sending).
+  function parseQuestionOptions(md) {
+    var opts = [];
+    String(md || "").split(/\r?\n/).forEach(function (line) {
+      var m = /^\s*(?:[-*]|[A-Za-z][).])\s+(.{1,120})$/.exec(line);
+      if (m && !/^#/.test(line)) opts.push(m[1].trim());
+    });
+    return opts.length >= 2 ? opts : [];
+  }
+
   function QuestionCard(props) {
     var task = props.task;
     var st = useState("");
@@ -443,6 +454,17 @@
     return h("div", { className: "acvc-question-card" },
       h("div", { className: "acvc-question-head" }, "❓ Question for you"),
       h("div", { className: "acvc-question-body" }, renderMarkdown(task.pendingQuestion.question)),
+      (function () {
+        var opts = parseQuestionOptions(task.pendingQuestion.question);
+        if (!opts.length) return null;
+        return h("div", { className: "acvc-question-options" }, opts.map(function (o, i) {
+          return h("button", {
+            key: "opt" + i,
+            className: "acvc-chip acvc-option" + (answer === o ? " acvc-option-active" : ""),
+            onClick: function () { setAnswer(o); },
+          }, o);
+        }));
+      })(),
       h("textarea", {
         className: "acvc-question-input",
         placeholder: "Type your answer… (the agent resumes as soon as you send)",
