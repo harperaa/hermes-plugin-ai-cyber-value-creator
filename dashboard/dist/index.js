@@ -474,6 +474,16 @@
     };
 
     return h("div", { className: "acvc-question-card" },
+      (function () {
+        var q = task.pendingQuestion;
+        if (!q.questionTotal || !q.questionNumber) return null;
+        var pct = Math.min(100, Math.round(((q.questionNumber - 1) / q.questionTotal) * 100));
+        return h("div", { className: "acvc-qprogress" },
+          h("div", { className: "acvc-qprogress-label" },
+            "Question " + q.questionNumber + " of " + q.questionTotal),
+          h("div", { className: "acvc-qprogress-track" },
+            h("div", { className: "acvc-qprogress-fill", style: { width: pct + "%" } })));
+      })(),
       h("div", { className: "acvc-question-head" }, "❓ Question for you"),
       h("div", { className: "acvc-question-body" }, renderMarkdown(task.pendingQuestion.question)),
       (function () {

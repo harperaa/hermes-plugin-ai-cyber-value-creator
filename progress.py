@@ -17,6 +17,7 @@ still imports in environments without hermes on the path.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -459,9 +460,20 @@ def get_pending_question(step_id: str) -> dict | None:
         body = (getattr(c, "body", "") or "").strip()
         if body.startswith(QUESTION_MARKER):
             question = body[len(QUESTION_MARKER):].strip()
+            # Interview progress line ("**Question 3 of 9**") — parsed out for
+            # the card's progress bar; stripped so it isn't shown twice.
+            number = total = None
+            m = re.search(
+                r"^\s*\*{0,2}Question\s+(\d+)\s+of\s+(\d+)\*{0,2}\s*$",
+                question, re.IGNORECASE | re.MULTILINE)
+            if m:
+                number, total = int(m.group(1)), int(m.group(2))
+                question = (question[:m.start()] + question[m.end():]).strip()
             return {
                 "taskId": kanban_id,
                 "question": question,
+                "questionNumber": number,
+                "questionTotal": total,
                 "askedAt": getattr(c, "created_at", None),
                 "author": getattr(c, "author", ""),
             }
