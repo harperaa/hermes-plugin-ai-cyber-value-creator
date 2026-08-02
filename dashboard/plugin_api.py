@@ -85,11 +85,14 @@ def _build_version() -> str:
             try:
                 import subprocess
                 from pathlib import Path
+                # format-local + TZ=UTC = commit time rendered in UTC, matching
+                # the release tags stamped by build-image.sh / CI.
+                env = dict(os.environ, TZ="UTC")
                 version = subprocess.run(
                     ["git", "-C", str(Path(__file__).resolve().parent.parent),
-                     "show", "-s", "--format=%cd", "--date=format:%Y.%m%d.%H%M",
-                     "HEAD"],
-                    capture_output=True, text=True, timeout=3,
+                     "show", "-s", "--format=%cd",
+                     "--date=format-local:%Y.%m%d.%H%M", "HEAD"],
+                    capture_output=True, text=True, timeout=3, env=env,
                 ).stdout.strip()
             except Exception:
                 version = ""
