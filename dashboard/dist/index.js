@@ -333,6 +333,8 @@
   function TaskControl(props) {
     var task = props.task;
     var busy = props.taskActions.busyTaskId === task.id;
+    // Two-click confirm for reset (native confirm() would block automation).
+    var armedSt = useState(false); var resetArmed = armedSt[0], setResetArmed = armedSt[1];
     if (task.kanban && task.kanban.taskId) {
       var els = [];
       var busyStates = { running: 1, ready: 1, todo: 1 };
@@ -359,6 +361,26 @@
         title: "Task " + task.kanban.taskId + " (" + (task.kanban.status || "open") + ") on the kanban board",
         className: "acvc-link",
       }, "task ↗"));
+      els.push(h("a", {
+        key: "reset",
+        href: "#",
+        onClick: function (e) {
+          e.preventDefault();
+          if (busy) return;
+          if (!resetArmed) {
+            setResetArmed(true);
+            setTimeout(function () { setResetArmed(false); }, 5000);
+            return;
+          }
+          setResetArmed(false);
+          props.taskActions.onResetTask(task.id);
+        },
+        title: resetArmed
+          ? "Click again to confirm: archives this step's task, clears its captured answers, and restarts the questioning"
+          : "Reset this step — clears its captured answers and restarts the questioning from the top",
+        className: "acvc-link acvc-reset-link",
+        style: resetArmed ? { color: "#f59e0b", fontWeight: 700 } : { color: MUTED },
+      }, busy ? "resetting…" : (resetArmed ? "confirm reset?" : "reset ↺")));
       return h("span", { style: { display: "flex", gap: 8 } }, els);
     }
     return h("button", {
@@ -1247,6 +1269,14 @@
         .finally(function () { setBusyTaskCreate(null); });
     }
 
+    function handleResetTask(taskId) {
+      setBusyTaskCreate(taskId);
+      postJSON("/reset-step", { taskId: taskId })
+        .catch(function (e) { window.alert(String((e && e.message) || e)); })
+        .then(refresh)
+        .finally(function () { setBusyTaskCreate(null); });
+    }
+
     function handleReset() {
       if (!window.confirm("Reset all roadmap progress? (Kanban tasks already created are kept — only the roadmap's progress and step links are cleared.)")) return;
       postJSON("/reset-progress", {}).then(refresh);
@@ -1276,7 +1306,7 @@
     var taskById = {};
     phases.forEach(function (p) { p.tasks.forEach(function (t) { taskById[t.id] = t; }); });
 
-    var taskActions = { busyTaskId: busyTaskCreate, onCreateTask: handleCreateTask, refresh: refresh };
+    var taskActions = { busyTaskId: busyTaskCreate, onCreateTask: handleCreateTask, onResetTask: handleResetTask, refresh: refresh };
 
     return h("div", { className: "acvc-page", style: { background: PAGE_BG, minHeight: "100%", color: TEXT } },
       h("div", { style: { padding: "28px 24px 48px", maxWidth: 1100, margin: "0 auto" } },

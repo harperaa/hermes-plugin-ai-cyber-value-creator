@@ -123,6 +123,17 @@ def start_step(body: StepBody):
     return result
 
 
+@router.post("/reset-step")
+def reset_step(body: StepBody):
+    """Restart one step: archive its kanban task, clear the context values its
+    interview locked in, and open a fresh task (questioning restarts at Q1)."""
+    _m, _cs, progress = _core()
+    result = progress.reset_step(body.taskId)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
 @router.post("/reset-progress")
 def reset_progress():
     _m, _cs, progress = _core()

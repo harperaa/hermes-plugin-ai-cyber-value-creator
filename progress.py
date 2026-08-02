@@ -24,6 +24,7 @@ from .context_store import get_data_dir, load_state, save_state
 from .methodology import (
     ALL_TASK_IDS,
     PLAYBOOK_SKILL_SLUG,
+    STEP_CONTEXT_KEYS,
     STEP_SKILLS,
     build_task_description,
     phase_for_task,
@@ -280,6 +281,49 @@ def open_step_task(task_id: str) -> dict:
     set_task_links(links)
     mark_step_status(task_id, "in-progress")
     return {"ok": True, "kanbanTaskId": kanban_id}
+
+
+def reset_step(task_id: str) -> dict:
+    """Restart a step from scratch: archive its kanban task (killing the old
+    thread), clear the values its interview locked into the company context,
+    drop the link/progress, and open a fresh task so the questioning restarts
+    from the first question."""
+    if not phase_for_task(task_id):
+        return {"error": f"Unknown taskId: {task_id}"}
+
+    old_kanban_id = (get_task_links().get(task_id) or {}).get("kanbanTaskId")
+    if old_kanban_id:
+        try:
+            kb = _kanban()
+            with kb.connect_closing() as conn:
+                kb.archive_task(conn, old_kanban_id)
+        except Exception:
+            pass  # a dead or missing task must not block the reset
+
+    state = load_state()
+    (state.get("tasks") or {}).pop(task_id, None)
+    (state.get("progress") or {}).pop(task_id, None)
+    ctx_key = STEP_CONTEXT_KEYS.get(task_id)
+    ctx = state.get("context")
+    if ctx_key and isinstance(ctx, dict):
+        ctx.pop(ctx_key, None)
+    save_state(state)
+    if ctx_key:
+        # merged_context() backfills empty fields from company-context.md —
+        # rewrite the file without this step's value or the old answer
+        # resurrects. Merge first so file-only values of OTHER fields survive.
+        try:
+            from .context_store import merged_context, write_shared_context_file
+            cleared = merged_context()
+            cleared.pop(ctx_key, None)
+            write_shared_context_file(cleared)
+        except Exception:
+            pass
+
+    result = open_step_task(task_id)
+    if result.get("ok"):
+        result["archivedTaskId"] = old_kanban_id
+    return result
 
 
 def find_step_for_kanban_task(kanban_task_id: str) -> str | None:

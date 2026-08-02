@@ -58,6 +58,17 @@ STEP_SKILLS = {
     "create-value-pitch": "craft-elevator-pitch",
 }
 
+# The company-context field each foundation interview locks in — a step
+# reset must clear exactly this field (and no other step's) so the fresh
+# worker re-asks from the top instead of reading the old answers back.
+STEP_CONTEXT_KEYS = {
+    "create-value-icp": "icp",
+    "create-value-problems": "problems",
+    "create-value-solutions": "solutions",
+    "create-value-offers": "offer",
+    "create-value-pitch": ELEVATOR_PITCH_KEY,
+}
+
 
 @dataclass(frozen=True)
 class TaskDef:
