@@ -380,14 +380,23 @@ def roadmap_data() -> dict:
     progress, links = sync_progress_from_kanban()
     phases = []
     done_total = 0
+    links_changed = False
     for phase in ALL_PHASES:
         tasks = []
         for task in phase.tasks:
             p = progress.get(task.id, {})
             link = links.get(task.id) or None
             pending = None
-            if link and link.get("kanbanStatus") == "blocked":
+            if link and link.get("kanbanStatus") in ("blocked", "triage"):
                 pending = get_pending_question(task.id)
+            # Persist the interview position (Question n of N) on the link so
+            # the progress bar stays up between questions — not only while a
+            # card is open. Cleared naturally by reset (the link is dropped).
+            if pending and pending.get("questionTotal"):
+                iv = {"n": pending.get("questionNumber"), "total": pending.get("questionTotal")}
+                if link.get("interview") != iv:
+                    link["interview"] = iv
+                    links_changed = True
             tasks.append(
                 {
                     "id": task.id,
@@ -402,6 +411,7 @@ def roadmap_data() -> dict:
                             "status": link.get("kanbanStatus"),
                             "sessionId": link.get("sessionId"),
                             "createdAt": link.get("createdAt"),
+                            "interview": link.get("interview"),
                         }
                         if link and link.get("kanbanTaskId")
                         else None
@@ -423,6 +433,8 @@ def roadmap_data() -> dict:
                 "totalCount": len(tasks),
             }
         )
+    if links_changed:
+        set_task_links(links)
     return {
         "phases": phases,
         "totalTasks": len(ALL_TASK_IDS),

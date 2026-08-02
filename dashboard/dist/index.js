@@ -436,15 +436,23 @@
       h("span", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 } },
         h("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
           (function () {
+            // Live position from the open card; otherwise the persisted
+            // interview position, so the bar stays up between questions.
             var q = task.pendingQuestion;
-            if (!q || !q.questionTotal || !q.questionNumber) return null;
-            var pct = Math.min(100, Math.round(((q.questionNumber - 1) / q.questionTotal) * 100));
+            var iv = task.kanban && task.kanban.interview;
+            var num = (q && q.questionNumber) || (iv && iv.n);
+            var total = (q && q.questionTotal) || (iv && iv.total);
+            if (!num || !total || task.status === "done") return null;
+            var answered = q ? num - 1 : Math.min(num, total);
+            var pct = Math.min(100, Math.round((answered / total) * 100));
             return h("span", {
               className: "acvc-qprogress",
-              title: "Interview progress: question " + q.questionNumber + " of " + q.questionTotal,
+              title: q
+                ? "Interview progress: question " + num + " of " + total
+                : "Interview progress: " + answered + " of " + total + " answered",
             },
               h("span", { className: "acvc-qprogress-label" },
-                "Q" + q.questionNumber + "/" + q.questionTotal),
+                q ? "Q" + num + "/" + total : answered + "/" + total),
               h("span", { style: { width: 64, display: "inline-block" } },
                 h(ProgressBar, { pct: pct, color: "#f59e0b" })));
           })(),
