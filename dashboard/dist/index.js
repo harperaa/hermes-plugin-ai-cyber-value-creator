@@ -77,6 +77,14 @@
     }
   } catch (e) { /* styling nicety only */ }
 
+  // Distribution default theme: cyberpunk — applied ONLY when the mentee
+  // has never picked a theme (host key absent). A chosen theme always wins.
+  try {
+    if (window.localStorage.getItem("hermes-dashboard-theme") === null) {
+      window.localStorage.setItem("hermes-dashboard-theme", "cyberpunk");
+    }
+  } catch (e) { /* private mode etc. */ }
+
   var React = SDK.React;
   var h = React.createElement;
   var hooks = SDK.hooks;
