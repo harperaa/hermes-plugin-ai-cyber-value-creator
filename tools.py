@@ -82,56 +82,38 @@ def value_creator_status(args: dict, **kwargs) -> str:
         return json.dumps({"error": str(exc)})
 
 
-def record_user_answer(args: dict, **kwargs) -> str:
-    try:
-        result = progress.record_chat_answer(
-            (args.get("task_id") or "").strip(), args.get("answer") or "")
-        if result.get("ok"):
-            result["message"] = (
-                "Answer recorded on the kanban task — the roadmap card and board "
-                "are in sync. The task stays blocked while you continue the "
-                "interview here: post the next question-card comment when you ask "
-                "again (do NOT call the block tool again), or unblock + complete "
-                "when the step is finished."
-            )
-        return json.dumps(result)
-    except Exception as exc:
-        return json.dumps({"error": str(exc)})
-
-
 def ask_user_question(args: dict, **kwargs) -> str:
     try:
-        result = progress.post_question_card(
+        result = progress.declare_question(
             (args.get("task_id") or "").strip(),
-            args.get("question") or "",
             number=args.get("question_number"),
             total=args.get("question_total"),
-            lock_in_note=args.get("lock_in_note"),
             reason_tag=args.get("reason_tag"),
         )
         if result.get("ok"):
             if result.get("nativeBlock"):
                 result["message"] = (
-                    "Question card posted. NOW, in this same turn: "
+                    "Interview position recorded. NOW, in this same turn: "
                     f"(1) call kanban_block(reason={result.get('blockReason', '')!r}, "
                     "kind='needs_input') — REQUIRED: this spawned worker session "
                     "must block through the native tool or the board records a "
                     "protocol violation; (2) END YOUR TURN with the COMPLETE "
-                    "question — options included — restated verbatim as your "
-                    "final chat message. Do NOT call clarify in this spawned "
-                    "worker turn — nobody is attached to this terminal and it "
-                    "would hang until timeout."
+                    "question — options included as bullet lines — as your final "
+                    "chat message. The chat is the ONLY place the user sees the "
+                    "question; do NOT post it as a kanban comment. Do NOT call "
+                    "clarify in this spawned worker turn — nobody is attached to "
+                    "this terminal and it would hang until timeout."
                 )
             else:
                 result["message"] = (
-                    "Question card posted; the task is blocked awaiting the answer. "
+                    "Interview position recorded; the task shows 'answer in chat'. "
                     "NOW: (a) ONLY if the user's latest message was TYPED here in "
-                    "chat (not the spawn prompt, not a '[via card]' relay), ask the "
-                    "SAME question with the clarify tool (options in `choices`, "
-                    "max 4) for the quick-select picker; (b) then END YOUR TURN "
-                    "with the COMPLETE question — options included — restated "
-                    "verbatim as your final chat message. A final message without "
-                    "the full question text is a protocol violation."
+                    "chat (not the 'work kanban task …' spawn prompt), ask the "
+                    "question with the clarify tool (options in `choices`, max 4) "
+                    "for the quick-select picker; (b) then END YOUR TURN with the "
+                    "COMPLETE question — options included as bullet lines — as "
+                    "your final chat message. The chat is the ONLY place the user "
+                    "sees the question; do NOT post it as a kanban comment."
                 )
         return json.dumps(result)
     except Exception as exc:

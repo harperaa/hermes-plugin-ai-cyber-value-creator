@@ -17,7 +17,6 @@ still imports in environments without hermes on the path.
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -284,88 +283,27 @@ def open_step_task(task_id: str) -> dict:
     return {"ok": True, "kanbanTaskId": kanban_id}
 
 
-def record_chat_answer(kanban_task_id: str, answer: str) -> dict:
-    """Record an answer the user gave IN THE WORKER'S CHAT THREAD.
-
-    Unlike answer_question()/the dashboard endpoints, here the worker session
-    is alive and continuing the interview itself — so the task must STAY
-    blocked: an unblock would let the dispatcher spawn a SECOND worker for
-    the same interview. Posts the answer to the task thread (so all three
-    answer surfaces stay in sync), resets the block-loop trust counter, and
-    restores blocked if the breaker had already pulled the task to triage.
-    """
-    text = (answer or "").strip()
-    if text.lower().startswith("[via card]"):
-        text = text[len("[via card]"):].strip()
-    if not text:
-        return {"error": "answer is empty"}
-    try:
-        kb = _kanban()
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, kanban_task_id)
-            if task is None:
-                return {"error": f"unknown kanban task {kanban_task_id}"}
-            # Card/drawer answers are recorded by deliver_answer() BEFORE the
-            # session resumes, and the model is told to always call this tool
-            # — skip the duplicate when the newest user comment already
-            # carries this exact answer.
-            comments = kb.list_comments(conn, kanban_task_id)
-            already = any(
-                (getattr(c, "author", "") or "") == "user"
-                and (getattr(c, "body", "") or "").strip() == text
-                for c in comments[-3:]
-            )
-            if not already:
-                kb.add_comment(conn, kanban_task_id, "user", text)
-            with kb.write_txn(conn):
-                conn.execute(
-                    "UPDATE tasks SET block_recurrences = 0 WHERE id = ?",
-                    (kanban_task_id,),
-                )
-                if getattr(task, "status", "") == "triage":
-                    conn.execute(
-                        "UPDATE tasks SET status = 'blocked', block_kind = 'needs_input' "
-                        "WHERE id = ?",
-                        (kanban_task_id,),
-                    )
-    except Exception as exc:
-        return {"error": f"could not record the answer: {exc}"}
-    return {"ok": True, "taskId": kanban_task_id, "status": "blocked"}
-
-
-def post_question_card(
+def declare_question(
     kanban_task_id: str,
-    question: str,
     number: int | None = None,
     total: int | None = None,
-    lock_in_note: str | None = None,
     reason_tag: str | None = None,
 ) -> dict:
-    """Post a protocol-correct question card and block the task — ONE call.
+    """Declare the question being asked IN CHAT (the only Q&A surface).
 
-    Composes the marker + progress line + question comment, posts the optional
-    lock-in note as a SEPARATE plain comment (never inside the card), and
-    blocks with kind=needs_input unless the task is already blocked (the live
-    chat path keeps tasks blocked between questions). Registered as the
-    ``ask_user_question`` tool so it works in dispatcher-spawned workers AND
-    resumed chat sessions — hermes' native kanban tools only exist in the
-    former, which otherwise sends chat sessions hunting for a fallback.
+    Posts nothing visible anywhere: it records the interview position (drives
+    the roadmap progress bar), and blocks the task on the first question so
+    the boards show "answer in chat". Dispatcher-spawned workers must block
+    via the NATIVE kanban_block tool (the harness' stop-guard only recognizes
+    that tool name in the transcript), so in that context blocking is
+    delegated back to the model. Registered as the ``ask_user_question`` tool.
     """
-    q = (question or "").strip()
-    if not q:
-        return {"error": "question is empty"}
-    if q.startswith(QUESTION_MARKER):
-        q = q[len(QUESTION_MARKER):].strip()
-    body = QUESTION_MARKER + "\n"
-    if number and total:
-        body += f"**Question {int(number)} of {int(total)}**\n"
-    body += "\n" + q
     tag = (reason_tag or "").strip() or (f"Q{int(number)}" if number else "Q")
-    reason = f"{tag}: waiting for your answer — see the question card."
-    # Dispatcher-spawned workers must block via the NATIVE kanban_block tool:
-    # the harness' stop-guard only recognizes that tool name in the
-    # transcript, and a db-side block sends the worker into a nudge loop
-    # ("tried to exit without kanban_complete/kanban_block").
+    if number and total:
+        reason = (f"Q{int(number)}/{int(total)} ({tag}): waiting for your answer "
+                  "— open the step's chat thread to reply.")
+    else:
+        reason = f"{tag}: waiting for your answer — open the step's chat thread to reply."
     import os
     in_worker = bool((os.environ.get("HERMES_KANBAN_TASK") or "").strip())
     native_block = False
@@ -375,18 +313,13 @@ def post_question_card(
             task = kb.get_task(conn, kanban_task_id)
             if task is None:
                 return {"error": f"unknown kanban task {kanban_task_id}"}
-            author = getattr(task, "assignee", None) or "default"
-            note = (lock_in_note or "").strip()
-            if note:
-                kb.add_comment(conn, kanban_task_id, author, note)
-            kb.add_comment(conn, kanban_task_id, author, body)
             status = getattr(task, "status", "")
             if status == "triage":
                 # Restore the interview's waiting state without a new block event.
                 with kb.write_txn(conn):
                     conn.execute(
-                        "UPDATE tasks SET status = 'blocked', block_kind = 'needs_input' "
-                        "WHERE id = ?",
+                        "UPDATE tasks SET status = 'blocked', block_kind = 'needs_input', "
+                        "    block_recurrences = 0 WHERE id = ?",
                         (kanban_task_id,),
                     )
             elif status != "blocked":
@@ -395,7 +328,19 @@ def post_question_card(
                 else:
                     kb.block_task(conn, kanban_task_id, reason=reason, kind="needs_input")
     except Exception as exc:
-        return {"error": f"could not post the question card: {exc}"}
+        return {"error": f"could not declare the question: {exc}"}
+
+    # Interview position -> step link (the roadmap progress bar's source).
+    if number and total:
+        step_id = find_step_for_kanban_task(kanban_task_id)
+        if step_id:
+            links = get_task_links()
+            link = links.get(step_id)
+            if link is not None:
+                iv = {"n": int(number), "total": int(total)}
+                if link.get("interview") != iv:
+                    link["interview"] = iv
+                    set_task_links(links)
     return {
         "ok": True,
         "taskId": kanban_task_id,
@@ -406,10 +351,11 @@ def post_question_card(
 
 
 def reset_step(task_id: str) -> dict:
-    """Restart a step from scratch: archive its kanban task (killing the old
+    """Reset a step to a clean slate: archive its kanban task (ending the old
     thread), clear the values its interview locked into the company context,
-    drop the link/progress, and open a fresh task so the questioning restarts
-    from the first question."""
+    and drop the link/progress so the step returns to "todo". Deliberately
+    does NOT create a new task — the user starts fresh with the + Task button.
+    """
     if not phase_for_task(task_id):
         return {"error": f"Unknown taskId: {task_id}"}
 
@@ -442,10 +388,7 @@ def reset_step(task_id: str) -> dict:
         except Exception:
             pass
 
-    result = open_step_task(task_id)
-    if result.get("ok"):
-        result["archivedTaskId"] = old_kanban_id
-    return result
+    return {"ok": True, "archivedTaskId": old_kanban_id, "status": "todo"}
 
 
 def find_step_for_kanban_task(kanban_task_id: str) -> str | None:
@@ -465,23 +408,11 @@ def roadmap_data() -> dict:
     progress, links = sync_progress_from_kanban()
     phases = []
     done_total = 0
-    links_changed = False
     for phase in ALL_PHASES:
         tasks = []
         for task in phase.tasks:
             p = progress.get(task.id, {})
             link = links.get(task.id) or None
-            pending = None
-            if link and link.get("kanbanStatus") in ("blocked", "triage"):
-                pending = get_pending_question(task.id)
-            # Persist the interview position (Question n of N) on the link so
-            # the progress bar stays up between questions — not only while a
-            # card is open. Cleared naturally by reset (the link is dropped).
-            if pending and pending.get("questionTotal"):
-                iv = {"n": pending.get("questionNumber"), "total": pending.get("questionTotal")}
-                if link.get("interview") != iv:
-                    link["interview"] = iv
-                    links_changed = True
             tasks.append(
                 {
                     "id": task.id,
@@ -489,7 +420,10 @@ def roadmap_data() -> dict:
                     "blurb": task.blurb,
                     "status": p.get("status", "todo"),
                     "updatedAt": p.get("updatedAt"),
-                    "pendingQuestion": pending,
+                    # Q&A happens ONLY in the chat thread — the board just
+                    # signals whose turn it is.
+                    "awaitingAnswer": bool(
+                        link and link.get("kanbanStatus") in ("blocked", "triage")),
                     "kanban": (
                         {
                             "taskId": link.get("kanbanTaskId"),
@@ -518,248 +452,8 @@ def roadmap_data() -> dict:
                 "totalCount": len(tasks),
             }
         )
-    if links_changed:
-        set_task_links(links)
     return {
         "phases": phases,
         "totalTasks": len(ALL_TASK_IDS),
         "doneTasks": done_total,
     }
-
-
-# ---------------------------------------------------------------------------
-# Question cards — the foundation briefs instruct workers to post a comment
-# starting with QUESTION_MARKER and then block (kind=needs_input). The
-# roadmap surfaces that comment as an inline card; answering posts a comment
-# and unblocks so the worker resumes immediately.
-# ---------------------------------------------------------------------------
-
-QUESTION_MARKER = "### ❓ QUESTION FOR YOU"
-
-
-def get_pending_question(step_id: str) -> dict | None:
-    """Newest question-card comment for a step whose task is blocked."""
-    links = get_task_links()
-    link = links.get(step_id) or {}
-    kanban_id = link.get("kanbanTaskId")
-    if not kanban_id:
-        return None
-    try:
-        kb = _kanban()
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, kanban_id)
-            if task is None or getattr(task, "status", "") not in ("blocked", "triage"):
-                return None
-            comments = kb.list_comments(conn, kanban_id)
-    except Exception:
-        return None
-    for c in reversed(comments):
-        body = (getattr(c, "body", "") or "").strip()
-        # A user comment newer than the newest question card means the
-        # question is ANSWERED — the session is working on the next one, so
-        # no surface should still offer an answer box for it.
-        if (getattr(c, "author", "") or "") == "user":
-            return None
-        if body.startswith(QUESTION_MARKER):
-            question = body[len(QUESTION_MARKER):].strip()
-            # Interview progress line ("**Question 3 of 9**") — parsed out for
-            # the card's progress bar; stripped so it isn't shown twice.
-            number = total = None
-            m = re.search(
-                r"^\s*\*{0,2}Question\s+(\d+)\s+of\s+(\d+)\*{0,2}\s*$",
-                question, re.IGNORECASE | re.MULTILINE)
-            if m:
-                number, total = int(m.group(1)), int(m.group(2))
-                question = (question[:m.start()] + question[m.end():]).strip()
-            return {
-                "taskId": kanban_id,
-                "question": question,
-                "questionNumber": number,
-                "questionTotal": total,
-                "askedAt": getattr(c, "created_at", None),
-                "author": getattr(c, "author", ""),
-            }
-    return None
-
-
-def _session_exists(session_id: str) -> bool:
-    """Cheap read-only check that a session id is real before resuming it —
-    the CLI boots slowly enough that a bogus id would outlive the liveness
-    probe and fake a successful resume."""
-    try:
-        import os
-        import sqlite3
-        try:
-            from hermes_constants import get_hermes_home
-            db = str(get_hermes_home() / "state.db")
-        except ImportError:
-            db = os.path.expanduser(
-                os.path.join(os.environ.get("HERMES_HOME", "~/.hermes"), "state.db"))
-        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-        try:
-            row = conn.execute(
-                "SELECT 1 FROM messages WHERE session_id = ? LIMIT 1",
-                (session_id,),
-            ).fetchone()
-        finally:
-            conn.close()
-        return row is not None
-    except Exception:
-        return False
-
-
-def _fallback_respawn(kanban_id: str) -> None:
-    """Late fallback when a resumed session dies mid-turn: classic unblock +
-    dispatcher kick so the interview never strands on a crashed resume."""
-    try:
-        kb = _kanban()
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, kanban_id)
-            if getattr(task, "status", "") == "blocked":
-                kb.unblock_task(conn, kanban_id)
-        kick_dispatcher()
-    except Exception:
-        pass
-
-
-def _resume_worker_session(session_id: str, message: str, assignee: str, kanban_id: str) -> bool:
-    """Continue the step's EXISTING worker session with *message* as its next
-    user turn — the chat-authoritative delivery path. Detached quiet run in
-    the dispatcher's spawn shape; returns False when the session is unknown
-    or the process dies within the probe window (caller falls back to
-    unblock+respawn). A watchdog keeps watching after the probe: if the
-    resumed run later exits nonzero, it unblocks + kicks so the interview
-    self-heals instead of stranding on a blocked task nobody is working."""
-    if not session_id or not _session_exists(session_id):
-        return False
-    try:
-        import os
-        import subprocess
-        import threading
-        import time
-        kb = _kanban()
-        try:
-            from hermes_cli.profiles import normalize_profile_name
-            assignee = normalize_profile_name(assignee)
-        except Exception:
-            pass
-        env = dict(os.environ)
-        env["HERMES_SESSION_SOURCE"] = "kanban"
-        # Give the continuation the worker tool surface: HERMES_KANBAN_TASK
-        # registers the kanban_* tools (check_fn gate) scoped to THIS task
-        # (ownership check), so the session can unblock+complete at interview
-        # end. The stop-guard this enables is already satisfied by the native
-        # kanban_block recorded earlier in the session transcript.
-        env["HERMES_KANBAN_TASK"] = kanban_id
-        env["HERMES_PROFILE"] = assignee
-        cmd = [
-            *kb._resolve_hermes_argv(),
-            "-p", assignee,
-            "--cli",
-            "--accept-hooks",
-            "chat", "-q", message, "-r", session_id,
-        ]
-        proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            env=env,
-        )
-        time.sleep(2.0)
-        if proc.poll() is not None and proc.returncode != 0:
-            return False
-
-        def _watch() -> None:
-            try:
-                rc = proc.wait(timeout=900)
-            except Exception:
-                return
-            if rc != 0:
-                _fallback_respawn(kanban_id)
-
-        threading.Thread(target=_watch, daemon=True).start()
-        return True
-    except Exception:
-        return False
-
-
-def deliver_answer(kanban_id: str, answer: str, session_id: str | None = None) -> dict:
-    """Deliver a human answer to a kanban task from ANY surface.
-
-    Chat is the authoritative conversation: record the answer as a task
-    comment, then RESUME the task's existing worker session with the answer
-    as its next chat message — same experience as typing in the chat thread,
-    one continuous session, task stays blocked while it works. Only when no
-    session can be resumed does this fall back to the classic
-    unblock + dispatcher respawn.
-    """
-    text = (answer or "").strip()
-    if not text:
-        return {"error": "answer is empty"}
-    try:
-        kb = _kanban()
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, kanban_id)
-            if task is None:
-                return {"error": f"unknown kanban task {kanban_id}"}
-            kb.add_comment(conn, kanban_id, "user", text)
-            # A HUMAN answered — reset the block-loop breaker's counter (it
-            # exists to distrust automated unblockers) and bump priority so
-            # any dispatcher pass picks this task first.
-            with kb.write_txn(conn):
-                conn.execute(
-                    "UPDATE tasks SET block_recurrences = 0, "
-                    "    priority = MAX(priority, 10) WHERE id = ?",
-                    (kanban_id,),
-                )
-            status = getattr(task, "status", "")
-            assignee = getattr(task, "assignee", None) or resolve_kanban_assignee()
-    except Exception as exc:
-        return {"error": f"could not deliver the answer: {exc}"}
-
-    # The "[via card]" prefix tells the session this answer was relayed from
-    # a card, not typed in an attached chat — so it must NOT use interactive
-    # prompts (clarify) that would hang a headless continuation.
-    sid = session_id or _find_worker_session(kanban_id)
-    if status in ("blocked", "triage") and _resume_worker_session(
-            sid, f"[via card] {text}", assignee, kanban_id):
-        if status == "triage":
-            try:
-                with kb.connect_closing() as conn:
-                    with kb.write_txn(conn):
-                        conn.execute(
-                            "UPDATE tasks SET status = 'blocked', "
-                            "    block_kind = 'needs_input' WHERE id = ?",
-                            (kanban_id,),
-                        )
-            except Exception:
-                pass
-        return {"ok": True, "taskId": kanban_id, "mode": "resumed"}
-
-    # Fallback — no resumable session: classic unblock + instant respawn.
-    try:
-        with kb.connect_closing() as conn:
-            task = kb.get_task(conn, kanban_id)
-            if getattr(task, "status", "") == "triage":
-                kb.specify_triage_task(conn, kanban_id, author="user")
-            elif getattr(task, "status", "") == "blocked":
-                kb.unblock_task(conn, kanban_id)
-    except Exception as exc:
-        return {"error": f"could not deliver the answer: {exc}"}
-    kick_dispatcher()
-    return {"ok": True, "taskId": kanban_id, "mode": "respawned"}
-
-
-def answer_question(step_id: str, answer: str) -> dict:
-    """Deliver the user's answer for a roadmap step (chat-authoritative)."""
-    links = get_task_links()
-    link = links.get(step_id) or {}
-    kanban_id = link.get("kanbanTaskId")
-    if not kanban_id:
-        return {"error": f"no kanban task linked to step {step_id}"}
-    result = deliver_answer(kanban_id, answer, session_id=link.get("sessionId"))
-    if result.get("ok"):
-        mark_step_status(step_id, "in-progress")
-    return result

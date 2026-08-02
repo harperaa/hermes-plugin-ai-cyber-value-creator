@@ -337,17 +337,25 @@
     var armedSt = useState(false); var resetArmed = armedSt[0], setResetArmed = armedSt[1];
     if (task.kanban && task.kanban.taskId) {
       var els = [];
-      // "blocked" with NO open question = the answer was delivered and the
-      // session is working on the next one (chat-authoritative flow) — that
-      // is a busy state too, not a waiting state.
-      var busyStates = { running: 1, ready: 1, todo: 1, blocked: 1 };
-      if (busyStates[task.kanban.status] && !task.pendingQuestion && task.status !== "done") {
+      var chatHref = task.kanban.sessionId
+        ? "/chat?resume=" + encodeURIComponent(task.kanban.sessionId)
+        : null;
+      if (task.awaitingAnswer && task.status !== "done") {
+        // Q&A lives in the chat thread only — the board's job is to send
+        // the user there the moment it's their turn.
+        els.push(h("a", {
+          key: "answer",
+          href: chatHref || "#",
+          onClick: function (e) { e.preventDefault(); if (chatHref) window.location.assign(chatHref); },
+          title: "The agent asked you a question — open the chat thread to answer",
+          className: "acvc-answer-chip",
+        }, "❓ your turn — answer in chat ↗"));
+      } else if (task.status !== "done") {
         els.push(h("span", { key: "spin", className: "acvc-working", title: "The agent is working this step — stand by" },
           h("span", { className: "acvc-spinner" }),
           task.kanban.status === "ready" || task.kanban.status === "todo" ? "queued…" : "agent working…"));
       }
-      if (task.kanban.sessionId) {
-        var chatHref = "/chat?resume=" + encodeURIComponent(task.kanban.sessionId);
+      if (chatHref) {
         els.push(h("a", {
           key: "chat",
           href: chatHref,
@@ -379,8 +387,8 @@
           props.taskActions.onResetTask(task.id);
         },
         title: resetArmed
-          ? "Click again to confirm: archives this step's task, clears its captured answers, and restarts the questioning"
-          : "Reset this step — clears its captured answers and restarts the questioning from the top",
+          ? "Click again to confirm: archives this step's task and clears its captured answers — the step returns to + Task"
+          : "Reset this step — clears all its interview state; start again with + Task",
         className: "acvc-link acvc-reset-link",
         style: resetArmed ? { color: "#f59e0b", fontWeight: 700 } : { color: MUTED },
       }, busy ? "resetting…" : (resetArmed ? "confirm reset?" : "reset ↺")));
@@ -439,23 +447,21 @@
       h("span", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 } },
         h("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
           (function () {
-            // Live position from the open card; otherwise the persisted
-            // interview position, so the bar stays up between questions.
-            var q = task.pendingQuestion;
+            // Interview position reported by the session's ask_user_question
+            // calls — the bar stays up for the whole interview.
             var iv = task.kanban && task.kanban.interview;
-            var num = (q && q.questionNumber) || (iv && iv.n);
-            var total = (q && q.questionTotal) || (iv && iv.total);
-            if (!num || !total || task.status === "done") return null;
-            var answered = q ? num - 1 : Math.min(num, total);
-            var pct = Math.min(100, Math.round((answered / total) * 100));
+            if (!iv || !iv.n || !iv.total || task.status === "done") return null;
+            var waiting = !!task.awaitingAnswer;
+            var answered = waiting ? iv.n - 1 : Math.min(iv.n, iv.total);
+            var pct = Math.min(100, Math.round((answered / iv.total) * 100));
             return h("span", {
               className: "acvc-qprogress",
-              title: q
-                ? "Interview progress: question " + num + " of " + total
-                : "Interview progress: " + answered + " of " + total + " answered",
+              title: waiting
+                ? "Interview progress: question " + iv.n + " of " + iv.total + " — answer in chat"
+                : "Interview progress: " + answered + " of " + iv.total + " answered",
             },
               h("span", { className: "acvc-qprogress-label" },
-                q ? "Q" + num + "/" + total : answered + "/" + total),
+                waiting ? "Q" + iv.n + "/" + iv.total : answered + "/" + iv.total),
               h("span", { style: { width: 64, display: "inline-block" } },
                 h(ProgressBar, { pct: pct, color: "#f59e0b" })));
           })(),
@@ -463,73 +469,7 @@
         props.badge ? h("span", { style: { fontSize: 10.5, color: MUTED } }, props.badge) : null,
         h(TaskControl, { task: task, taskActions: props.taskActions })
       )
-    ), h(QuestionCard, { task: task, onAnswered: props.taskActions && props.taskActions.refresh }));
-  }
-
-  // Inline question card — rendered under a step row when the worker has
-  // posted a "### ❓ QUESTION FOR YOU" comment and blocked (needs_input).
-  // Answering posts the comment, unblocks, and the worker resumes at once.
-  // Lines like "- Option A" / "A) Option" in a question render as clickable
-  // choices that prefill the answer (still editable before sending).
-  function parseQuestionOptions(md) {
-    var opts = [];
-    String(md || "").split(/\r?\n/).forEach(function (line) {
-      var m = /^\s*(?:[-*]|[A-Za-z][).])\s+(.{1,120})$/.exec(line);
-      if (m && !/^#/.test(line)) opts.push(m[1].trim());
-    });
-    return opts.length >= 2 ? opts : [];
-  }
-
-  function QuestionCard(props) {
-    var task = props.task;
-    var st = useState("");
-    var answer = st[0], setAnswer = st[1];
-    var busySt = useState(false);
-    var busy = busySt[0], setBusy = busySt[1];
-    var errSt = useState(null);
-    var err = errSt[0], setErr = errSt[1];
-    if (!task.pendingQuestion) return null;
-
-    var submit = function () {
-      if (!answer.trim() || busy) return;
-      setBusy(true); setErr(null);
-      postJSON("/answer-step", { stepId: task.id, answer: answer })
-        .then(function () { setAnswer(""); setBusy(false); if (props.onAnswered) props.onAnswered(); })
-        .catch(function (e) { setErr(String((e && e.message) || e)); setBusy(false); });
-    };
-
-    return h("div", { className: "acvc-question-card" },
-      h("div", { className: "acvc-question-head" }, "❓ Question for you"),
-      h("div", { className: "acvc-question-body" }, renderMarkdown(task.pendingQuestion.question)),
-      (function () {
-        var opts = parseQuestionOptions(task.pendingQuestion.question);
-        if (!opts.length) return null;
-        return h("div", { className: "acvc-question-options" }, opts.map(function (o, i) {
-          return h("button", {
-            key: "opt" + i,
-            className: "acvc-chip acvc-option" + (answer === o ? " acvc-option-active" : ""),
-            onClick: function () { setAnswer(o); },
-          }, o);
-        }));
-      })(),
-      h("textarea", {
-        className: "acvc-question-input",
-        placeholder: "Type your answer… (the agent resumes as soon as you send)",
-        value: answer,
-        rows: 3,
-        disabled: busy,
-        onChange: function (e) { setAnswer(e.target.value); },
-        onKeyDown: function (e) {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
-        },
-      }),
-      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } },
-        err ? h("span", { style: { color: "#ef4444", fontSize: 12.5 } }, err) : h("span", null),
-        h("button", {
-          className: "acvc-task-btn",
-          onClick: submit,
-          disabled: busy || !answer.trim(),
-        }, busy ? "Sending…" : "Send answer")));
+    ));
   }
 
   // -------------------------------------------------------------------------

@@ -6,7 +6,7 @@ four-phase flywheel (Attract → Nurture → Convert → Deliver) worked in laps
 
 Registers:
 * tools     — record_company_context, get_company_context,
-              value_creator_status, start_value_step, record_user_answer
+              value_creator_status, start_value_step, ask_user_question
 * commands  — /value-creator, /value-step
 * skills    — ai-cyber-value-creator:<slug> (playbook + step guidance +
               company-context)
@@ -64,12 +64,6 @@ def register(ctx) -> None:
         toolset="value_creator",
         schema=schemas.START_VALUE_STEP,
         handler=tools.start_value_step,
-    )
-    ctx.register_tool(
-        name="record_user_answer",
-        toolset="value_creator",
-        schema=schemas.RECORD_USER_ANSWER,
-        handler=tools.record_user_answer,
     )
     ctx.register_tool(
         name="ask_user_question",

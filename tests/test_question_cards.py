@@ -1,9 +1,6 @@
-"""Question-card backend units: marker parsing, exact session lookup."""
-import json
-import os
+"""Interview backend units: exact session lookup + chat-only declare/reset."""
 import sqlite3
 import sys
-import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -42,6 +39,12 @@ def test_find_worker_session_exact_match(monkeypatch, tmp_path):
     assert progress._find_worker_session("t_zzz") is None
 
 
-def test_question_marker_constant(monkeypatch, tmp_path):
+def test_chat_only_interview_surface(monkeypatch, tmp_path):
+    """The chat-only design must expose declare_question/reset_step and NOT
+    the removed card-answer plumbing."""
     progress = _load_progress(monkeypatch, tmp_path)
-    assert progress.QUESTION_MARKER == "### ❓ QUESTION FOR YOU"
+    assert callable(progress.declare_question)
+    assert callable(progress.reset_step)
+    for removed in ("get_pending_question", "answer_question", "deliver_answer",
+                    "record_chat_answer", "post_question_card"):
+        assert not hasattr(progress, removed), f"{removed} should be gone"

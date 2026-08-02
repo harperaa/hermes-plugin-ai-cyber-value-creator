@@ -229,23 +229,6 @@ def setup_status():
     }
 
 
-class _AnswerBody(BaseModel):
-    stepId: str
-    answer: str
-
-
-@router.post("/answer-step")
-def answer_step(body: _AnswerBody):
-    """Deliver the user's answer to a blocked step's question card: posts the
-    comment, unblocks the task, and kicks the dispatcher so the worker
-    resumes immediately."""
-    _m, _c, progress = _core()
-    result = progress.answer_question(body.stepId, body.answer)
-    if result.get("error"):
-        raise HTTPException(status_code=400, detail=result["error"])
-    return result
-
-
 @router.post("/pin-cron")
 def pin_cron():
     """Pin the two scheduled jobs to the mentee's connected provider.
@@ -291,20 +274,3 @@ def pin_cron():
     return {"ok": True, "provider": provider, "model": model, "jobs": pinned}
 
 
-class _KanbanAnswerBody(BaseModel):
-    taskId: str
-    answer: str
-
-
-@router.post("/kanban-answer")
-def kanban_answer(body: _KanbanAnswerBody):
-    """Generic question-card answer for ANY kanban task (used by the patched
-    drawer answer box). Chat-authoritative: records the answer and resumes
-    the task's existing worker session with it as the next chat message;
-    falls back to unblock + dispatcher respawn when no session is resumable."""
-    _m, _c, progress = _core()
-    result = progress.deliver_answer(body.taskId, body.answer)
-    if result.get("error"):
-        code = 404 if "unknown kanban task" in result["error"] else 400
-        raise HTTPException(status_code=code, detail=result["error"])
-    return result

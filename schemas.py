@@ -54,11 +54,12 @@ VALUE_CREATOR_STATUS = {
 ASK_USER_QUESTION = {
     "name": "ask_user_question",
     "description": (
-        "Ask the user the next interview question on a kanban task — ONE call "
-        "that posts the protocol-correct question card (marker + progress "
-        "line) and blocks the task for input. Works in every session type; "
-        "use it INSTEAD of manual kanban comment + block calls. The optional "
-        "lock_in_note is posted as a separate plain comment before the card."
+        "Declare the interview question you are about to ask IN CHAT on a "
+        "kanban task you are working. Records the interview position (drives "
+        "the roadmap progress bar) and marks the task as waiting for the "
+        "user's answer. It posts NOTHING visible — the question itself must "
+        "be delivered by you in the chat conversation, which is the only "
+        "place the user asks and answers questions."
     ),
     "parameters": {
         "type": "object",
@@ -66,14 +67,6 @@ ASK_USER_QUESTION = {
             "task_id": {
                 "type": "string",
                 "description": "The kanban task id you are working (e.g. t_063beb70).",
-            },
-            "question": {
-                "type": "string",
-                "description": (
-                    "EXACTLY ONE question, markdown. Discrete options go on "
-                    "their own lines starting with '- ' (rendered as clickable "
-                    "answer buttons); no other line may start with '- '."
-                ),
             },
             "question_number": {
                 "type": "integer",
@@ -83,46 +76,12 @@ ASK_USER_QUESTION = {
                 "type": "integer",
                 "description": "Total questions planned for this step's interview.",
             },
-            "lock_in_note": {
-                "type": "string",
-                "description": (
-                    "Optional one-line recap of what the previous answer locked "
-                    "in. Posted as its own comment — NEVER put recaps in the question."
-                ),
-            },
             "reason_tag": {
                 "type": "string",
-                "description": "Unique short tag for the block reason, e.g. 'Q3 (company size)'.",
+                "description": "Unique short tag for the waiting reason, e.g. 'company size'.",
             },
         },
-        "required": ["task_id", "question", "question_number", "question_total"],
-    },
-}
-
-RECORD_USER_ANSWER = {
-    "name": "record_user_answer",
-    "description": (
-        "Record an answer the user just gave IN THIS CHAT THREAD to an open "
-        "question card on a kanban task you are working. Posts the answer onto "
-        "the task thread (so the roadmap card and kanban board stay in sync) "
-        "and resets the board's stuck-loop counter. The task stays blocked — "
-        "you are already here working it, so keep the interview going in this "
-        "conversation. Only for answers given in chat; card answers arrive as "
-        "task comments on their own."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "task_id": {
-                "type": "string",
-                "description": "The kanban task id you are working (e.g. t_063beb70).",
-            },
-            "answer": {
-                "type": "string",
-                "description": "The user's answer, verbatim.",
-            },
-        },
-        "required": ["task_id", "answer"],
+        "required": ["task_id", "question_number", "question_total"],
     },
 }
 
