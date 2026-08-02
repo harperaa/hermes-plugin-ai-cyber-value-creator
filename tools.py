@@ -82,6 +82,23 @@ def value_creator_status(args: dict, **kwargs) -> str:
         return json.dumps({"error": str(exc)})
 
 
+def record_user_answer(args: dict, **kwargs) -> str:
+    try:
+        result = progress.record_chat_answer(
+            (args.get("task_id") or "").strip(), args.get("answer") or "")
+        if result.get("ok"):
+            result["message"] = (
+                "Answer recorded on the kanban task — the roadmap card and board "
+                "are in sync. The task stays blocked while you continue the "
+                "interview here: post the next question-card comment when you ask "
+                "again (do NOT call the block tool again), or unblock + complete "
+                "when the step is finished."
+            )
+        return json.dumps(result)
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})
+
+
 def start_value_step(args: dict, **kwargs) -> str:
     try:
         step_id = (args.get("step_id") or "").strip()

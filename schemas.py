@@ -51,6 +51,33 @@ VALUE_CREATOR_STATUS = {
     "parameters": {"type": "object", "properties": {}, "required": []},
 }
 
+RECORD_USER_ANSWER = {
+    "name": "record_user_answer",
+    "description": (
+        "Record an answer the user just gave IN THIS CHAT THREAD to an open "
+        "question card on a kanban task you are working. Posts the answer onto "
+        "the task thread (so the roadmap card and kanban board stay in sync) "
+        "and resets the board's stuck-loop counter. The task stays blocked — "
+        "you are already here working it, so keep the interview going in this "
+        "conversation. Only for answers given in chat; card answers arrive as "
+        "task comments on their own."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "task_id": {
+                "type": "string",
+                "description": "The kanban task id you are working (e.g. t_063beb70).",
+            },
+            "answer": {
+                "type": "string",
+                "description": "The user's answer, verbatim.",
+            },
+        },
+        "required": ["task_id", "answer"],
+    },
+}
+
 START_VALUE_STEP = {
     "name": "start_value_step",
     "description": (

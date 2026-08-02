@@ -283,6 +283,42 @@ def open_step_task(task_id: str) -> dict:
     return {"ok": True, "kanbanTaskId": kanban_id}
 
 
+def record_chat_answer(kanban_task_id: str, answer: str) -> dict:
+    """Record an answer the user gave IN THE WORKER'S CHAT THREAD.
+
+    Unlike answer_question()/the dashboard endpoints, here the worker session
+    is alive and continuing the interview itself — so the task must STAY
+    blocked: an unblock would let the dispatcher spawn a SECOND worker for
+    the same interview. Posts the answer to the task thread (so all three
+    answer surfaces stay in sync), resets the block-loop trust counter, and
+    restores blocked if the breaker had already pulled the task to triage.
+    """
+    text = (answer or "").strip()
+    if not text:
+        return {"error": "answer is empty"}
+    try:
+        kb = _kanban()
+        with kb.connect_closing() as conn:
+            task = kb.get_task(conn, kanban_task_id)
+            if task is None:
+                return {"error": f"unknown kanban task {kanban_task_id}"}
+            kb.add_comment(conn, kanban_task_id, "user", text)
+            with kb.write_txn(conn):
+                conn.execute(
+                    "UPDATE tasks SET block_recurrences = 0 WHERE id = ?",
+                    (kanban_task_id,),
+                )
+                if getattr(task, "status", "") == "triage":
+                    conn.execute(
+                        "UPDATE tasks SET status = 'blocked', block_kind = 'needs_input' "
+                        "WHERE id = ?",
+                        (kanban_task_id,),
+                    )
+    except Exception as exc:
+        return {"error": f"could not record the answer: {exc}"}
+    return {"ok": True, "taskId": kanban_task_id, "status": "blocked"}
+
+
 def reset_step(task_id: str) -> dict:
     """Restart a step from scratch: archive its kanban task (killing the old
     thread), clear the values its interview locked into the company context,
