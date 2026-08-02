@@ -147,10 +147,13 @@ def _find_worker_session(kanban_task_id: str) -> str | None:
                 os.path.join(os.environ.get("HERMES_HOME", "~/.hermes"), "state.db"))
         conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         try:
+            # Exact match on the dispatcher's spawn prompt — a LIKE match
+            # bleeds across tasks (any worker that lists the board mentions
+            # other task ids in its transcript). Latest attempt wins.
             row = conn.execute(
-                "SELECT session_id FROM messages WHERE content LIKE ? "
-                "ORDER BY id DESC LIMIT 1",
-                (f"%{kanban_task_id}%",),
+                "SELECT session_id FROM messages WHERE role = 'user' "
+                "AND content = ? ORDER BY id DESC LIMIT 1",
+                (f"work kanban task {kanban_task_id}",),
             ).fetchone()
         finally:
             conn.close()

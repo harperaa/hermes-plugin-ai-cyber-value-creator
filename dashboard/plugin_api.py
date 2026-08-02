@@ -233,3 +233,48 @@ def answer_step(body: _AnswerBody):
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+@router.post("/pin-cron")
+def pin_cron():
+    """Pin the two scheduled jobs to the mentee's connected provider.
+
+    Blank-model deployments create the jobs unpinned; once a provider is
+    connected, the spend-drift guard would skip them on the next config
+    change. Called by the Getting Started card the first time it sees an
+    LLM connected. Idempotent.
+    """
+    try:
+        from hermes_cli.config import load_config
+        from hermes_cli.models import get_default_model_for_provider
+        from cron import jobs as cron_jobs
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=f"hermes modules unavailable: {exc}")
+
+    cfg = load_config() or {}
+    mb = cfg.get("model")
+    provider = (mb or {}).get("provider", "") if isinstance(mb, dict) else ""
+    model = (mb or {}).get("default", "") if isinstance(mb, dict) else str(mb or "")
+    if not provider:
+        raise HTTPException(status_code=409, detail="no provider configured yet")
+    if not model:
+        base = provider.replace("-oauth", "")
+        model = (get_default_model_for_provider(provider)
+                 or get_default_model_for_provider(base) or "")
+    if not model:
+        raise HTTPException(status_code=409, detail=f"no default model known for provider {provider!r}")
+
+    pinned = []
+    for name in ("youtube-intelligence-refresh", "youtube-content-pipeline"):
+        try:
+            job = cron_jobs.resolve_job_ref(name)
+            if not job:
+                continue
+            if job.get("provider") and job.get("model"):
+                pinned.append({"name": name, "already": True})
+                continue
+            cron_jobs.update_job(job["id"], {"provider": provider, "model": model})
+            pinned.append({"name": name, "provider": provider, "model": model})
+        except Exception as exc:
+            pinned.append({"name": name, "error": str(exc)})
+    return {"ok": True, "provider": provider, "model": model, "jobs": pinned}

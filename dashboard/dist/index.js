@@ -335,6 +335,12 @@
     var busy = props.taskActions.busyTaskId === task.id;
     if (task.kanban && task.kanban.taskId) {
       var els = [];
+      var busyStates = { running: 1, ready: 1, todo: 1 };
+      if (busyStates[task.kanban.status] && !task.pendingQuestion && task.status !== "done") {
+        els.push(h("span", { key: "spin", className: "acvc-working", title: "The agent is working this step — stand by" },
+          h("span", { className: "acvc-spinner" }),
+          task.kanban.status === "running" ? "agent working…" : "queued…"));
+      }
       if (task.kanban.sessionId) {
         var chatHref = "/chat?resume=" + encodeURIComponent(task.kanban.sessionId);
         els.push(h("a", {
@@ -344,12 +350,6 @@
           title: "Open this step's conversation thread",
           className: "acvc-link",
         }, "chat ↗"));
-      } else {
-        els.push(h("span", {
-          key: "starting",
-          className: "acvc-chip",
-          title: "The chat link appears when the worker posts its first turn",
-        }, "starting…"));
       }
       var kbHref = "/kanban#task=" + encodeURIComponent(task.kanban.taskId);
       els.push(h("a", {
@@ -1107,7 +1107,17 @@
     var dismissed = dis[0], setDismissed = dis[1];
 
     useEffect(function () {
-      api("/setup-status").then(setStatus).catch(function () { setStatus(null); });
+      api("/setup-status").then(function (s) {
+        setStatus(s);
+        try {
+          if (s && (s.llmConnected || s.grokConnected) &&
+              !localStorage.getItem("acvc-cron-pinned")) {
+            postJSON("/pin-cron", {}).then(function () {
+              localStorage.setItem("acvc-cron-pinned", "1");
+            }).catch(function () { /* retried next visit */ });
+          }
+        } catch (e) {}
+      }).catch(function () { setStatus(null); });
     }, []);
 
     if (!status || (status.allDone && true) || dismissed) return null;
@@ -1146,9 +1156,9 @@
       h(StepRow, { num: "1", done: !!(status.llmConnected || status.grokConnected), title: "Connect an AI model provider (powers your agent)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Open the ", h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
-          " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use. Then pick your main model on the ",
+          " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use — that's it: a sensible default model for that provider is selected automatically. (Optional: change it anytime on the ",
           h("a", { href: "/models", style: { color: "var(--color-primary, #14b8a6)" } }, "Models page"),
-          " if you don't want the preset (xai · grok-4.5).")),
+          ".)")),
       h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for YouTube Insights)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Only needed if you want competitor YouTube intelligence. Create a key at ",
