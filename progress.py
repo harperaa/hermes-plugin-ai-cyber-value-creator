@@ -181,11 +181,14 @@ def sync_progress_from_kanban() -> tuple[dict[str, dict], dict[str, dict]]:
                 if task is None:
                     continue
                 # Surface the worker session id so the dashboard can deep-link
-                # the conversation thread (/chat?resume=<session_id>).
-                sid = getattr(task, "session_id", None)
-                if not sid and not link.get("sessionId") and task.status in (
-                        "running", "blocked", "done", "in_review"):
+                # the conversation thread (/chat?resume=<session_id>). Always
+                # re-resolve for live tasks: the latest respawn wins, and a
+                # stale/incorrect cached id self-heals on the next sync.
+                sid = None
+                if task.status in ("running", "blocked", "done", "in_review", "triage"):
                     sid = _find_worker_session(kid)
+                if not sid:
+                    sid = getattr(task, "session_id", None)
                 if sid and link.get("sessionId") != sid:
                     link["sessionId"] = sid
                     changed = True
