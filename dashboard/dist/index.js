@@ -40,6 +40,22 @@
     }
   } catch (e) { /* storage unavailable — skip the nicety */ }
 
+  // Sidebar: surface the Plugins section ABOVE the core nav — the plugin
+  // tabs are the product for mentees. Pure CSS reorder (order:-1) against
+  // the sidebar's stable aria hooks, so React re-renders can't undo it and
+  // no hermes code changes.
+  try {
+    if (!document.getElementById("acvc-sidebar-order")) {
+      var acvcNavStyle = document.createElement("style");
+      acvcNavStyle.id = "acvc-sidebar-order";
+      acvcNavStyle.textContent =
+        'nav:has(> div[aria-labelledby="hermes-sidebar-plugin-nav-heading"]){display:flex;flex-direction:column;}' +
+        'nav > div[aria-labelledby="hermes-sidebar-plugin-nav-heading"]{order:-1;border-top:0;' +
+        'border-bottom:1px solid color-mix(in srgb, currentColor 10%, transparent);}';
+      document.head.appendChild(acvcNavStyle);
+    }
+  } catch (e) { /* styling nicety only */ }
+
   var React = SDK.React;
   var h = React.createElement;
   var hooks = SDK.hooks;
