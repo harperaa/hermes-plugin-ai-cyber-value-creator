@@ -28,8 +28,8 @@
           if (!s) return; // leave the one-shot unburned on bad data
           if (!s.llmConnected && !s.grokConnected) {
             localStorage.setItem("acvc-first-login-redirect", "1");
-            if (window.location.pathname !== "/keys") {
-              window.location.assign("/keys");
+            if (window.location.pathname !== "/env") {
+              window.location.assign("/env");
             }
           } else {
             // setup already complete — disarm without redirecting
@@ -1096,7 +1096,7 @@
         "Two quick connections and your AI business system is fully armed."),
       h(StepRow, { num: "1", done: !!(status.llmConnected || status.grokConnected), title: "Connect an AI model provider (powers your agent)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
-          "Open the ", h("a", { href: "/keys", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          "Open the ", h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
           " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use. Then pick your main model on the ",
           h("a", { href: "/models", style: { color: "var(--color-primary, #14b8a6)" } }, "Models page"),
           " if you don't want the preset (xai · grok-4.5).")),
@@ -1105,7 +1105,7 @@
           "Only needed if you want competitor YouTube intelligence. Create a key at ",
           h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "transcriptapi.com"),
           ", then set TRANSCRIPT_API_KEY on the ",
-          h("a", { href: "/keys", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
           " — it's waiting for you under Custom Keys.")));
   }
 
