@@ -1375,14 +1375,10 @@
           h("span", null, "Tip: click a sub-task to cycle To-Do → In-Progress → Done. \"+ Task\" runs the step as a hermes session (needs the gateway running)."),
           h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress")),
 
-        (function () {
-          var vtext = data.build
-            ? "AI Cyber Value Creator v" + data.build
-            : (data.commit ? "AI Cyber Value Creator dev " + data.commit : null);
-          return vtext
-            ? h("div", { className: "acvc-version", style: { marginTop: 14, textAlign: "center", fontSize: 11, color: MUTED } }, vtext)
-            : null;
-        })()
+        data.build
+          ? h("div", { className: "acvc-version", style: { marginTop: 14, textAlign: "center", fontSize: 11, color: MUTED } },
+              "AI Cyber Value Creator v" + data.build)
+          : null
       )
     );
   }
