@@ -189,6 +189,24 @@ def resolve_kanban_assignee() -> str:
     return "default"
 
 
+def kick_dispatcher(max_spawn: int = 1) -> bool:
+    """Run one dispatcher pass NOW so a just-created task spawns immediately
+    instead of waiting for the gateway's next 60s tick. Safe anywhere: the
+    board lock makes concurrent ticks a no-op, and any failure just leaves
+    the task for the normal ticker."""
+    try:
+        kb = _kanban()
+        with kb.connect_closing() as conn:
+            kb.dispatch_once(
+                conn,
+                max_spawn=max_spawn,
+                default_assignee=resolve_kanban_assignee(),
+            )
+        return True
+    except Exception:
+        return False
+
+
 def open_step_task(task_id: str) -> dict:
     """Create a fresh kanban task for a roadmap step, link it, and put the
     step in progress. The gateway dispatcher spawns the worker session."""
@@ -211,9 +229,14 @@ def open_step_task(task_id: str) -> dict:
                 created_by="ai-cyber-value-creator",
                 workspace_kind="scratch",
                 skills=skills,
+                priority=10,  # user-initiated: jump the queue
             )
     except Exception as exc:
         return {"error": f"Could not create the kanban task: {exc}"}
+
+    # Fire the dispatcher immediately — the worker session starts within
+    # seconds rather than at the next scheduled tick.
+    kick_dispatcher()
 
     links = get_task_links()
     links[task_id] = {"kanbanTaskId": kanban_id, "createdAt": _now_iso()}
