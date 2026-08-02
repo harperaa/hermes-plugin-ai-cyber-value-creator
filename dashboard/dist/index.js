@@ -53,15 +53,21 @@
         'nav:has(> ' + G + '){display:flex;flex-direction:column;}' +
         'nav > ' + G + '{order:-1;border-top:0;' +
         'border-bottom:1px solid color-mix(in srgb, currentColor 10%, transparent);}' +
-        // Branded split: our two tabs first under "AI CYBER VALUE CREATOR",
-        // everything else under "PLUGINS". Pure CSS (order + ::before labels)
-        // against stable hrefs, so React re-renders can't undo it.
+        // Branded split: our tabs first under "AI CYBER VALUE CREATOR"
+        // (Your Level, then Roadmap, then YouTube), everything else under
+        // "HERMES PLUGINS". Pure CSS (order + ::before labels) against
+        // stable hrefs, so React re-renders can't undo it. The section
+        // label sits on /level when that plugin is installed and falls
+        // back to /roadmap when it isn't.
         '#hermes-sidebar-plugin-nav-heading{display:none;}' +
         G + ' > ul{display:flex;flex-direction:column;}' +
+        G + ' li:has(> a[href="/level"]){order:-3;}' +
         G + ' li:has(> a[href="/roadmap"]){order:-2;}' +
         G + ' li:has(> a[href="/youtube"]){order:-1;}' +
-        G + ' li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
+        G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR";}' +
+        G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
+        G + ' li:has(> a[href="/level"])::before,' +
         G + ' li:has(> a[href="/roadmap"])::before,' + G + ' li:has(> a[href="/kanban"])::before{' +
         'display:block;padding:10px 20px 4px;font-size:11px;letter-spacing:0.12em;' +
         'font-weight:600;color:var(--color-muted-foreground,#9aa0b4);}' +
