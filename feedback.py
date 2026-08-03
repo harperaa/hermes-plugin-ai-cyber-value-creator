@@ -217,9 +217,6 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
         return {"error": "the quick note is required"}
     if not (activities or "").strip():
         return {"error": "the activities summary is required"}
-    if not (stuck or "").strip():
-        return {"error": "the stuck/assistance field is required "
-                         "(write 'nothing' if you're unblocked)"}
     if not (next_step or "").strip():
         return {"error": "your very next step is required"}
     prev_ident = get_identity()

@@ -60,7 +60,6 @@ def test_submit_requires_everything(home):
     assert "required" in feedback.submit("green", "n", "a", "s", False, **kw)["error"]
     assert "note" in feedback.submit("green", "", "a", "s", True, **kw)["error"]
     assert "activities" in feedback.submit("green", "n", "", "s", True, **kw)["error"]
-    assert "stuck" in feedback.submit("green", "n", "a", "", True, **kw)["error"]
     assert "next step" in feedback.submit("green", "n", "a", "s", True,
                                           next_step="", **kw)["error"]
 
@@ -207,9 +206,11 @@ def test_detail_dossier_and_ssl_guard(home, monkeypatch):
         return FakeResp()
 
     with patch.object(feedback.urllib.request, "urlopen", fake_open):
-        r = feedback.submit("green", "n", "a", "s", True,
+        # stuck is optional — blank means "not stuck"
+        r = feedback.submit("green", "n", "a", "", True,
                             name="Al", email="m@x.com", next_step="x")
     assert r["ok"], r
+    assert sent["payload"]["stuck"] == ""
     d = sent["payload"]["detail"]
     assert d["level"]["closedItems"][0]["evidence"] == "the receipts"
     assert d["level"]["openItems"][0]["id"] == "L2-2"

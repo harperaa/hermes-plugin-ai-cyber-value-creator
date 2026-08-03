@@ -381,8 +381,8 @@
         '<textarea id="acvc-fb-activities" rows="2" placeholder="Summary of the activities you performed…"></textarea>' +
         "<label>What is your very next step?</label>" +
         '<textarea id="acvc-fb-next" rows="2" placeholder="The one concrete thing you\'ll do next…"></textarea>' +
-        '<label>Anything you\'re stuck on and need assistance with?</label>' +
-        '<textarea id="acvc-fb-stuck" rows="2" placeholder="Blockers, questions, things you want your mentor to see…"></textarea>' +
+        '<label>Anything you\'re stuck on and need assistance with? <span style="font-weight:400">(optional — leave blank if you\'re not stuck)</span></label>' +
+        '<textarea id="acvc-fb-stuck" rows="2" placeholder="Blockers, questions, things you want your mentor to see — or leave blank…"></textarea>' +
         '<label class="acvc-fb-ack"><input type="checkbox" id="acvc-fb-ack"> ' +
         "I agree that my current level and roadmap completion status will be " +
         "submitted as part of this feedback. <b>(required)</b></label>" +
@@ -426,9 +426,9 @@
       }
 
       function refreshSend() {
-        // Everything is required: identity, a light, the three text
-        // fields, and the acknowledgement.
-        var filled = ["acvc-fb-note", "acvc-fb-activities", "acvc-fb-next", "acvc-fb-stuck"]
+        // Required: identity, a light, note/activities/next-step, and the
+        // acknowledgement. Stuck is optional — blank means "not stuck".
+        var filled = ["acvc-fb-note", "acvc-fb-activities", "acvc-fb-next"]
           .every(function (id) {
             return box.querySelector("#" + id).value.trim().length > 0;
           });
