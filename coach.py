@@ -92,11 +92,12 @@ GUIDANCE: dict[str, list[str]] = {
     ],
     # ---- Nurture -----------------------------------------------------------
     "nurture-community": [
-        "Pick the home for your community (e.g. Skool) and give it one clear promise tied to your offer.",
-        "Design the first-week experience: what a new member does on day one, day three, day seven.",
-        "Seed engagement daily at first — questions, wins, calls; the norm you model is the norm you get.",
-        "Free community nurtures toward the low-ticket purchase; keep the path visible but not pushy.",
-        "Measure weekly active members, not signups.",
+        "Default path: build your OWN community (e.g. Skool) with one clear promise tied to your offer — you own the space, the norms, and the pipeline.",
+        "Honest alternative: joining an established community where your ICP already gathers can foster relationships, deep problem discovery, and a place to share your solution.",
+        "Probe which fits before committing: can they seed their own space daily, or is their ICP already concentrated somewhere active they should join first?",
+        "If joining another's community: it IS less effective than owning — and be sensitive about pitching, it's not your space. Give value first, earn the right, respect the host's rules.",
+        "Own-community playbook: design the first-week experience (day one, three, seven), seed engagement daily, keep the low-ticket path visible but not pushy.",
+        "Either way, measure weekly active relationships, not signups.",
     ],
     "nurture-longform": [
         "Long-form (YouTube, podcast, newsletter) is where trust compounds — pick ONE watering hole your ICP already visits.",
