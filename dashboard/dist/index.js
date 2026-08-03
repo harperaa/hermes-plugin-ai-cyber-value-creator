@@ -293,8 +293,12 @@
         }
         var f = fstat.freshness || "yellow";
         // Fresh (green) = the standing "Daily feedback" invitation, calm and
-        // the same shade as the update pill. Past a week it becomes the
-        // pulsing yellow "Weekly feedback" nag; past two, pulsing red.
+        // the same shade as the update pill. Once the last check-in is more
+        // than 24h old the green pill pulses visibly (today's check-in is
+        // due). Past a week it becomes the pulsing yellow "Weekly feedback"
+        // nag; past two, pulsing red.
+        var dailyDue = f === "green" && fstat.lastSubmittedAt &&
+          (Date.now() / 1000 - fstat.lastSubmittedAt) > 24 * 3600;
         btn.textContent = f === "green" ? "📝 Daily feedback" : "📝 Weekly feedback";
         btn.style.cssText =
           "margin-left:auto;margin-right:18px;flex-shrink:0;font-size:12px;" +
@@ -302,8 +306,11 @@
           "border-radius:999px;text-decoration:none;color:#04211c;" +
           "cursor:pointer;order:97;" +
           "background:" + COLORS[f] + ";" +
-          (f === "green" ? "" :
-            "animation:acvc-feedback-pulse 2.2s ease-in-out infinite;");
+          (f !== "green"
+            ? "animation:acvc-feedback-pulse 2.2s ease-in-out infinite;"
+            : dailyDue
+              ? "animation:acvc-feedback-pulse-daily 1.5s ease-in-out infinite;"
+              : "");
         btn.title = fstat.lastSubmittedAt
           ? "Last check-in: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString()
           : "No check-in yet — your mentor is waiting to hear from you";

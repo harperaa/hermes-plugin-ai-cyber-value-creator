@@ -609,6 +609,11 @@
   0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.35); }
   50% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.8); }
 }
+/* daily check-in due (>24h since last submit): unmistakable green pulse */
+@keyframes acvc-feedback-pulse-daily {
+  0%, 100% { box-shadow: 0 0 5px rgba(52, 211, 153, 0.45); transform: scale(1); }
+  50% { box-shadow: 0 0 26px rgba(52, 211, 153, 1); transform: scale(1.07); }
+}
 .acvc-fb-row { display: flex; gap: 18px; margin-bottom: 8px; align-items: stretch; }
 .acvc-fb-stoplight {
   flex-shrink: 0;
