@@ -37,7 +37,7 @@
             // the generic landing pages so deep links stay untouched.
             localStorage.setItem("acvc-first-login-redirect", "1");
             var p = window.location.pathname;
-            if (p === "/" || p === "/chat") {
+            if (p === "/" || p === "/chat" || p === "/sessions") {
               window.location.assign("/roadmap");
             }
           }
