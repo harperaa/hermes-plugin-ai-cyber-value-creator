@@ -660,12 +660,6 @@
   var ACCENT_FG = "var(--color-primary-foreground, #0e0e1a)";
   var PURPLE = "#8b5cf6";
 
-  var STATUS_ORDER = ["todo", "in-progress", "done"];
-  function nextStatus(s) {
-    var i = STATUS_ORDER.indexOf(s);
-    return STATUS_ORDER[(i + 1) % STATUS_ORDER.length];
-  }
-
   function hexToRgba(hex, alpha) {
     var x = hex.replace("#", "");
     var r = parseInt(x.slice(0, 2), 16);
@@ -1068,13 +1062,10 @@
   function TaskRow(props) {
     var task = props.task;
     var done = task.status === "done";
-    return h(React.Fragment, null, h("div", { className: "acvc-task-row", style: { opacity: props.busy ? 0.6 : 1 } },
-      h("button", {
-        onClick: props.onClick,
-        disabled: props.busy,
-        title: "Click to change status",
+    return h(React.Fragment, null, h("div", { className: "acvc-task-row" },
+      h("div", {
         className: "acvc-task-main",
-        style: { cursor: props.busy ? "wait" : "pointer" },
+        style: { cursor: "default" },
       },
         props.numberLabel != null
           ? h("span", { className: "acvc-task-num" }, props.numberLabel)
@@ -1273,8 +1264,6 @@
         ? h("div", null, phase.tasks.map(function (task, ti) {
             return h(TaskRow, {
               key: task.id, task: task, accent: phase.color,
-              busy: props.busyTask === task.id,
-              onClick: function () { props.onCycle(task); },
               numberLabel: (ti + 1) + ".",
               taskActions: props.taskActions,
             });
@@ -1750,8 +1739,6 @@
             h("div", { key: "tasks" }, phase.tasks.map(function (task, ti) {
               return h(TaskRow, {
                 key: task.id, task: task, accent: phase.color,
-                busy: props.busyTask === task.id,
-                onClick: function () { props.onCycle(task); },
                 numberLabel: (ti + 1) + ".",
                 badge: "Step " + stepNumber(props.index, ti, props.numPhases) + " · Lap " + (ti + 1),
                 taskActions: props.taskActions,
@@ -1796,8 +1783,6 @@
             h("div", { key: "rows" }, lap.rows.map(function (row) {
               return h(TaskRow, {
                 key: row.task.id, task: row.task, accent: row.phase.color,
-                busy: props.busyTask === row.task.id,
-                onClick: function () { props.onCycle(row.task); },
                 numberLabel: String(row.step),
                 phaseChip: { name: row.phase.name, color: row.phase.color },
                 taskActions: props.taskActions,
@@ -1829,8 +1814,6 @@
         ? lap.rows.map(function (row) {
             return h(TaskRow, {
               key: row.task.id, task: row.task, accent: row.phase.color,
-              busy: props.busyTask === row.task.id,
-              onClick: function () { props.onCycle(row.task); },
               numberLabel: String(row.step),
               phaseChip: { name: row.phase.name, color: row.phase.color },
               taskActions: props.taskActions,
@@ -1845,7 +1828,7 @@
       props.laps.map(function (lap) {
         return h(SequenceLapSection, {
           key: lap.index, lap: lap,
-          busyTask: props.busyTask, onCycle: props.onCycle, taskActions: props.taskActions,
+          taskActions: props.taskActions,
         });
       }));
   }
@@ -1947,8 +1930,6 @@
     var data = dataSt[0], setData = dataSt[1];
     var errSt = useState(null);
     var error = errSt[0], setError = errSt[1];
-    var busyTaskSt = useState(null);
-    var busyTask = busyTaskSt[0], setBusyTask = busyTaskSt[1];
     var busyCreateSt = useState(null);
     var busyTaskCreate = busyCreateSt[0], setBusyTaskCreate = busyCreateSt[1];
     var coachSt = useState({});
@@ -1997,13 +1978,6 @@
         pendingPhaseRef.current = null;
       }
     }, [view]);
-
-    function cycleTask(task) {
-      setBusyTask(task.id);
-      postJSON("/step-status", { taskId: task.id, status: nextStatus(task.status) })
-        .then(refresh)
-        .finally(function () { setBusyTask(null); });
-    }
 
     function coachStart(taskId) {
       setBusyTaskCreate(taskId);
@@ -2111,8 +2085,8 @@
         // Foundation
         foundationPhase
           ? h(FoundationSection, {
-              phase: foundationPhase, done: foundationDone, busyTask: busyTask,
-              onCycle: cycleTask, taskActions: taskActions,
+              phase: foundationPhase, done: foundationDone,
+              taskActions: taskActions,
             })
           : null,
 
@@ -2134,7 +2108,7 @@
                 wheelPhases.map(function (phase, i) {
                   return h(PhaseCard, {
                     key: phase.id, index: i, numPhases: wheelPhases.length, phase: phase,
-                    busyTask: busyTask, onCycle: cycleTask, taskActions: taskActions,
+                    taskActions: taskActions,
                     isLast: i === wheelPhases.length - 1,
                   });
                 }))
@@ -2144,12 +2118,12 @@
                 laps.map(function (lap) {
                   return h(LapCard, {
                     key: lap.index, lap: lap, totalLaps: laps.length,
-                    busyTask: busyTask, onCycle: cycleTask, taskActions: taskActions,
+                    taskActions: taskActions,
                   });
                 }))
             : null,
           view === "sequence"
-            ? h(SequenceView, { laps: laps, busyTask: busyTask, onCycle: cycleTask, taskActions: taskActions })
+            ? h(SequenceView, { laps: laps, taskActions: taskActions })
             : null
         ),
 
@@ -2160,7 +2134,7 @@
             justifyContent: "space-between", color: MUTED, fontSize: 12,
           },
         },
-          h("span", null, "Tip: expand any step with \"▸ Coach\" — guidance plus a live working session, right here. Clicking a sub-task still cycles To-Do → In-Progress → Done manually."),
+          h("span", null, "Tip: expand any step with \"▸ Coach\" — guidance plus a live working session, right here. Steps complete (and reset) through the Coach, not by clicking."),
           h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress")),
 
         data.build

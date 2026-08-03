@@ -198,22 +198,6 @@ def get_roadmap():
     return data
 
 
-class StatusBody(BaseModel):
-    taskId: str
-    status: str
-
-
-@router.post("/step-status")
-def set_step_status(body: StatusBody):
-    methodology, _cs, progress = _core()
-    if not methodology.phase_for_task(body.taskId):
-        raise HTTPException(status_code=404, detail=f"Unknown taskId: {body.taskId}")
-    if body.status not in methodology.STATUS_ORDER:
-        raise HTTPException(status_code=400, detail=f"status must be one of {methodology.STATUS_ORDER}")
-    progress.mark_step_status(body.taskId, body.status)
-    return {"ok": True}
-
-
 class StepBody(BaseModel):
     taskId: str
 
