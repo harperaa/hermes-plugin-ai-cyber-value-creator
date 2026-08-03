@@ -117,7 +117,7 @@
         a.onclick = function (e) { e.preventDefault(); showModal(); };
         a.textContent = "⬆ Update available";
         a.style.cssText =
-          "margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;" +
+          "margin-left:auto;margin-right:18px;flex-shrink:0;font-size:12px;font-weight:700;" +
           "letter-spacing:0.04em;padding:4px 12px;border-radius:999px;" +
           "text-decoration:none;color:#04211c;cursor:pointer;" +
           "background:linear-gradient(120deg,#34d399,#a7f3d0);" +
