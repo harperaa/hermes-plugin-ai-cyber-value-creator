@@ -662,10 +662,19 @@
           }, established ? "Your Level ↗" : "Take the assessment ↗"))
       ),
       open
-        ? h("div", { style: { padding: "12px 18px", fontSize: 13, color: MUTED } },
-            established && lv.rationale
+        ? h("div", { style: { padding: "12px 18px", fontSize: 13, color: MUTED, lineHeight: 1.55 } },
+            established && lv.current
               ? h("div", { style: { marginBottom: 8 } },
-                  h("b", { style: { color: TEXT } }, "Examiner's verdict: "), lv.rationale)
+                  h("b", { style: { color: TEXT } },
+                    "You are — Level " + lv.level + " (" + lv.current.name + "): "),
+                  lv.current.summary,
+                  lv.rationale ? " The Examiner's verdict on you: " + lv.rationale : "")
+              : null,
+            established && lv.next
+              ? h("div", { style: { marginBottom: 8 } },
+                  h("b", { style: { color: TEXT } },
+                    "Next up — Level " + lv.next.level + " (" + lv.next.name + "): "),
+                  lv.next.summary)
               : null,
             established && lv.checklist
               ? h("div", null,

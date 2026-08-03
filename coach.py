@@ -323,6 +323,29 @@ def _convo(messages: list[dict]) -> str:
 # Flows
 # ---------------------------------------------------------------------------
 
+# Compact copy of the value-creator-level framework summaries (the plugins
+# are import-independent; this text is stable framework content shown in the
+# roadmap's Your Level panel when both plugins are present).
+LEVEL_SUMMARIES = {
+    1: ("The Spark", "In love with what AI can do and with one particular "
+        "idea. No go-to-market thinking, no wider problem-space view, no "
+        "thesis — rolling the dice."),
+    2: ("The Listener", "Same passion, plus openness: the idea shifts as "
+        "they wrestle with a real problem space and real customers. This is "
+        "where profitable side gigs start."),
+    3: ("The Amplifier", "Classic entrepreneurship: go-to-market, "
+        "distribution, telling the story. Plus the new AI move: using AI "
+        "itself to supercharge distribution — AI outbound, voice, AI-driven "
+        "content. AI runs across every business function."),
+    4: ("The Thesis", "Deep, marinated understanding of the problem space "
+        "and a unique, stable thesis for attacking it — one that doesn't "
+        "change with each news drop. Venture-scale starts here."),
+    5: ("The Oracle", "Understands AI's trend and trajectory in their "
+        "specific domain and builds NOW for capabilities that land in 6-12 "
+        "months — first through the door, every time."),
+}
+
+
 def levels_installed() -> bool:
     """Is the value-creator-level plugin installed? The two plugins are
     independent — the level gate/section only exist when both are present.
@@ -353,11 +376,16 @@ def level_status() -> dict:
         cl = data.get("checklist") or {}
         items = cl.get("items") or []
         done = sum(1 for i in items if i.get("status") == "done")
+        cur = LEVEL_SUMMARIES.get(level)
+        nxt = LEVEL_SUMMARIES.get(level + 1)
         return {
             "installed": True,
             "level": level,
             "badge": ({"name": badge.get("name"), "emoji": badge.get("emoji"),
                        "level": badge.get("level")} if badge else None),
+            "current": ({"name": cur[0], "summary": cur[1]} if cur else None),
+            "next": ({"level": level + 1, "name": nxt[0], "summary": nxt[1]}
+                     if nxt else None),
             "rationale": (last.get("rationale") or "")[:400],
             "strengths": [str(x)[:160] for x in (last.get("strengths") or [])][:5],
             "checklist": ({"done": done, "total": len(items),
