@@ -399,6 +399,64 @@ def setup_status():
     }
 
 
+# ---------------------------------------------------------------------------
+# Update check — is a newer image published than the one running?
+# The published version is mirrored to an unlisted gist at publish time
+# (containers can't auth to the private GHCR/GitHub). Cached 1h in-process.
+# ---------------------------------------------------------------------------
+_BEACON_GIST = os.environ.get("HPD_BEACON_GIST", "53cc65f66a044777e930e044d43e49eb")
+_UPDATE_CACHE: dict = {"at": 0.0, "latest": ""}
+
+
+def _latest_published_version() -> str:
+    import json as _json
+    import time as _time
+    import urllib.request
+    now = _time.time()
+    if _UPDATE_CACHE["latest"] and now - _UPDATE_CACHE["at"] < 3600:
+        return _UPDATE_CACHE["latest"]
+    latest = ""
+    for url, extract in (
+        (f"https://api.github.com/gists/{_BEACON_GIST}",
+         lambda b: _json.loads(b)["files"]["VERSION"]["content"]),
+        (f"https://gist.githubusercontent.com/harperaa/{_BEACON_GIST}/raw/VERSION",
+         lambda b: b.decode()),
+    ):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "curl/8.4.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                latest = extract(resp.read()).strip()
+            if latest:
+                break
+        except Exception:
+            continue
+    if latest:
+        _UPDATE_CACHE["latest"] = latest
+        _UPDATE_CACHE["at"] = now
+    return latest
+
+
+@router.get("/update-check")
+def update_check() -> dict:
+    current = (os.environ.get("HPD_VERSION") or "").strip()
+    latest = _latest_published_version()
+    project = os.environ.get("RAILWAY_PROJECT_ID", "")
+    service = os.environ.get("RAILWAY_SERVICE_ID", "")
+    environment = os.environ.get("RAILWAY_ENVIRONMENT_ID", "")
+    railway_url = ""
+    if project and service:
+        railway_url = (f"https://railway.com/project/{project}"
+                       f"/service/{service}"
+                       + (f"?environmentId={environment}" if environment else ""))
+    return {
+        # No HPD_VERSION (dev checkout) -> never claim an update.
+        "updateAvailable": bool(current and latest and latest != current),
+        "current": current,
+        "latest": latest,
+        "railwayUrl": railway_url,
+    }
+
+
 @router.post("/pin-cron")
 def pin_cron():
     """Pin the two scheduled jobs to the mentee's connected provider.

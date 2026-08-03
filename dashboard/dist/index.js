@@ -91,6 +91,65 @@
   } catch (e) { /* private mode etc. */ }
 
   // -------------------------------------------------------------------------
+  // Update-available button — injected on the right side of the top header
+  // bar when a newer image than the running one has been published. Links
+  // (new tab) to the Railway service page where Redeploy pulls :stable.
+  // -------------------------------------------------------------------------
+  (function updateButton() {
+    var info = null;
+    function ensure() {
+      try {
+        if (!info || !info.updateAvailable) return;
+        if (document.getElementById("acvc-update-btn")) return;
+        var headers = [].slice.call(document.querySelectorAll("header"));
+        var bar = headers.filter(function (x) {
+          return !/lg:hidden/.test(String(x.className));
+        })[0] || headers[0];
+        if (!bar) return;
+        var a = document.createElement("a");
+        a.id = "acvc-update-btn";
+        if (info.railwayUrl) {
+          a.href = info.railwayUrl;
+          a.target = "_blank";
+          a.rel = "noreferrer";
+          a.title = "Version " + info.latest + " is available (you run " +
+            info.current + "). Opens your Railway service — hit Redeploy " +
+            "to pull the update.";
+        } else {
+          a.href = "#";
+          a.title = "Version " + info.latest + " is available (you run " +
+            info.current + "). Redeploy the service to pull the update.";
+          a.onclick = function (e) { e.preventDefault(); };
+        }
+        a.textContent = "⬆ Update available";
+        a.style.cssText =
+          "margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;" +
+          "letter-spacing:0.04em;padding:4px 12px;border-radius:999px;" +
+          "text-decoration:none;color:#04211c;cursor:pointer;" +
+          "background:linear-gradient(120deg,#34d399,#a7f3d0);" +
+          "box-shadow:0 0 12px rgba(52,211,153,0.5);" +
+          "animation:acvc-update-pulse 2.6s ease-in-out infinite;";
+        bar.style.display = "flex";
+        bar.style.alignItems = "center";
+        bar.appendChild(a);
+      } catch (e) { /* cosmetic */ }
+    }
+    function poll() {
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/update-check")
+        .then(function (d) {
+          info = d;
+          var old = document.getElementById("acvc-update-btn");
+          if (old && (!d || !d.updateAvailable)) old.remove();
+          ensure();
+        })
+        .catch(function () { /* try again next poll */ });
+    }
+    poll();
+    setInterval(poll, 30 * 60 * 1000);           // fresh check every 30 min
+    setInterval(ensure, 2000);                   // survive React re-renders
+  })();
+
+  // -------------------------------------------------------------------------
   // Ambient background engine — the SAME treatment as the levels page
   // (theme-tinted fixed layer + drifting dust + wandering lights), applied
   // to the Roadmap and YouTube Insights pages. Vanilla JS (React-free) so it
