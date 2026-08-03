@@ -83,7 +83,151 @@
     if (window.localStorage.getItem("hermes-dashboard-theme") === null) {
       window.localStorage.setItem("hermes-dashboard-theme", "cyberpunk");
     }
+    // …and the system sans font (the font selector in the sidebar footer) —
+    // cyberpunk colors, readable type. A saved choice always wins.
+    if (window.localStorage.getItem("hermes-dashboard-font") === null) {
+      window.localStorage.setItem("hermes-dashboard-font", "system-sans");
+    }
   } catch (e) { /* private mode etc. */ }
+
+  // -------------------------------------------------------------------------
+  // Ambient background engine — the SAME treatment as the levels page
+  // (theme-tinted fixed layer + drifting dust + wandering lights), applied
+  // to the Roadmap and YouTube Insights pages. Vanilla JS (React-free) so it
+  // survives SPA navigation; honors the shared FX toggle (vcl-effects-off).
+  // -------------------------------------------------------------------------
+  (function ambientBackground() {
+    var ROUTES = { "/roadmap": 1, "/youtube": 1 };
+    var canvas = null, tintEl = null, raf = 0, stars = null;
+    var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
+    var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
+    var lightTheme = false, moteBase = 255, dpr = 1;
+    var probeCanvas = null;
+
+    function parseColor(col, fallback) {
+      if (!probeCanvas) { probeCanvas = document.createElement("canvas"); probeCanvas.width = probeCanvas.height = 1; }
+      var x = probeCanvas.getContext("2d", { willReadFrequently: true });
+      x.fillStyle = fallback; x.fillStyle = col;
+      x.clearRect(0, 0, 1, 1); x.fillRect(0, 0, 1, 1);
+      var d = x.getImageData(0, 0, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2] };
+    }
+    function resolveVar(name, fallback) {
+      var probe = document.createElement("span");
+      probe.style.color = "var(" + name + ", " + fallback + ")";
+      probe.style.display = "none";
+      document.body.appendChild(probe);
+      var col = getComputedStyle(probe).color;
+      probe.remove();
+      return parseColor(col, fallback);
+    }
+    function refreshPalette() {
+      theme = resolveVar("--color-primary", "#14b8a6");
+      fore = parseColor(getComputedStyle(document.body).color, "#e6e6f0");
+      var card = resolveVar("--color-card", "#16162a");
+      var lum = 0.2126 * card.r + 0.7152 * card.g + 0.0722 * card.b;
+      lightTheme = lum > 140;
+      moteBase = lightTheme ? 0 : 255;
+    }
+    function effectsOff() {
+      try { return localStorage.getItem("vcl-effects-off") === "1"; }
+      catch (e) { return false; }
+    }
+    function resize() {
+      if (!canvas) return;
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+    }
+    function onMove(e) {
+      pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    }
+    function frame(t) {
+      if (!canvas) return;
+      var ctx = canvas.getContext("2d");
+      var w = canvas.width, hgt = canvas.height;
+      if (effectsOff()) { ctx.clearRect(0, 0, w, hgt); raf = requestAnimationFrame(frame); return; }
+      eased.x += (pointer.x - eased.x) * 0.03;
+      eased.y += (pointer.y - eased.y) * 0.03;
+      ctx.clearRect(0, 0, w, hgt);
+      var lx = (0.5 + 0.34 * Math.sin(t * 0.000041)) * w;
+      var ly = (0.42 + 0.30 * Math.sin(t * 0.000029 + 1.7)) * hgt;
+      var lr = Math.max(w, hgt) * 0.42;
+      var glow = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+      glow.addColorStop(0, "rgba(" + theme.r + "," + theme.g + "," + theme.b + ",0.34)");
+      glow.addColorStop(0.55, "rgba(" + theme.r + "," + theme.g + "," + theme.b + ",0.13)");
+      glow.addColorStop(1, "rgba(" + theme.r + "," + theme.g + "," + theme.b + ",0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, w, hgt);
+      var l2x = (0.5 - 0.38 * Math.sin(t * 0.000033 + 0.6)) * w;
+      var l2y = (0.55 + 0.28 * Math.cos(t * 0.000047)) * hgt;
+      var g2 = ctx.createRadialGradient(l2x, l2y, 0, l2x, l2y, lr * 0.7);
+      g2.addColorStop(0, "rgba(" + fore.r + "," + fore.g + "," + fore.b + "," + (lightTheme ? 0.09 : 0.13) + ")");
+      g2.addColorStop(1, "rgba(" + fore.r + "," + fore.g + "," + fore.b + ",0)");
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, w, hgt);
+      for (var i = 0; i < stars.length; i++) {
+        var st = stars[i];
+        st.x += 0.000012 * (0.3 + st.depth);
+        st.y -= 0.0000048 * (0.3 + st.depth);
+        if (st.x > 1.02) st.x = -0.02;
+        if (st.y < -0.02) st.y = 1.02;
+        var px = (st.x + eased.x * 0.012 * st.depth) * w;
+        var py = (st.y + eased.y * 0.012 * st.depth) * hgt;
+        var a = (0.10 + 0.16 * st.depth) *
+          (0.7 + 0.3 * Math.sin(t * 0.00045 * st.twinkle + st.phase));
+        var base = st.themed ? theme : fore;
+        var cr = Math.round(base.r * 0.45 + moteBase * 0.55);
+        var cg = Math.round(base.g * 0.45 + moteBase * 0.55);
+        var cb = Math.round(base.b * 0.45 + moteBase * 0.55);
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(" + cr + "," + cg + "," + cb + "," + a + ")";
+        ctx.arc(px, py, (0.5 + st.depth * 0.9) * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    function mount() {
+      if (canvas) return;
+      stars = [];
+      for (var i = 0; i < 140; i++) {
+        stars.push({ x: Math.random(), y: Math.random(),
+          depth: 0.35 + Math.random() * 0.65,
+          phase: Math.random() * Math.PI * 2,
+          twinkle: 0.4 + Math.random() * 0.8,
+          themed: Math.random() < 0.45 });
+      }
+      tintEl = document.createElement("div");
+      tintEl.className = "acvc-ambient-tint";
+      canvas = document.createElement("canvas");
+      canvas.className = "acvc-ambient-canvas";
+      canvas.style.opacity = "0.95";
+      document.body.appendChild(tintEl);
+      document.body.appendChild(canvas);
+      refreshPalette(); resize();
+      window.addEventListener("resize", resize);
+      window.addEventListener("mousemove", onMove);
+      raf = requestAnimationFrame(frame);
+    }
+    function unmount() {
+      if (!canvas) return;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", onMove);
+      canvas.remove(); tintEl.remove();
+      canvas = null; tintEl = null;
+    }
+    function check() {
+      if (ROUTES[window.location.pathname]) mount(); else unmount();
+    }
+    try {
+      new MutationObserver(function () { refreshPalette(); })
+        .observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+    } catch (e) {}
+    setInterval(refreshPalette, 3000);
+    window.addEventListener("popstate", check);
+    setInterval(check, 800);
+    check();
+  })();
 
   var React = SDK.React;
   var h = React.createElement;
@@ -112,12 +256,15 @@
   // -------------------------------------------------------------------------
   // Theme tokens — host CSS variables with fallbacks (match the original).
   // -------------------------------------------------------------------------
-  var PAGE_BG = "var(--color-background, #0e0e1a)";
+  // The page paints NO background of its own — the host's themed bg shows
+  // through and the ambient layer (below) adds the tint + FX, exactly like
+  // the levels page.
+  var PAGE_BG = "transparent";
   var CARD_BG = "var(--color-card, #1a1a2e)";
   var INSET_BG = "var(--color-secondary, #13131f)";
   var FIELD_BG = "var(--color-input, #0f0f1c)";
   var BORDER = "var(--color-border, #2b2b44)";
-  var TEXT = "var(--color-foreground, #e7e7f0)";
+  var TEXT = "currentColor";   // hermes themes define no --color-foreground
   var MUTED = "var(--color-muted-foreground, #9aa0b4)";
   var ACCENT_FG = "var(--color-primary-foreground, #0e0e1a)";
   var PURPLE = "#8b5cf6";

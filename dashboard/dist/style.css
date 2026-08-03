@@ -173,7 +173,7 @@
 .acvc-textarea {
   width: 100%;
   background: var(--color-input, #0f0f1c);
-  color: var(--color-foreground, #e7e7f0);
+  color: inherit;
   border: 1px solid var(--color-border, #2b2b44);
   border-radius: 8px;
   padding: 6px 8px;
@@ -219,7 +219,7 @@
 
 .acvc-hub {
   position: relative;
-  background: var(--color-background, #0e0e1a);
+  background: var(--color-card, #16162a);
   border-radius: 999px;
   width: 156px;
   height: 156px;
@@ -228,7 +228,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  box-shadow: 0 0 0 6px var(--color-background, #0e0e1a);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-card, #16162a) 70%, transparent);
   cursor: pointer;
 }
 
@@ -274,7 +274,7 @@
    list reads cleanly. */
 .acvc-md {
   font-size: 13px;
-  color: var(--color-foreground, #e7e7f0);
+  color: inherit;
 }
 
 .acvc-md table {
@@ -530,3 +530,19 @@
   100% { background-position: -60% 0; }
 }
 .acvc-lvl-badge-locked { filter: saturate(0.2); }
+
+/* ---- Ambient background (roadmap + insights — same treatment as /level) ---- */
+.acvc-ambient-tint {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%,
+      color-mix(in srgb, var(--color-primary, #14b8a6) 13%, transparent), transparent),
+    radial-gradient(ellipse 60% 45% at 85% 110%,
+      color-mix(in srgb, var(--color-primary, #14b8a6) 9%, transparent), transparent);
+}
+.acvc-ambient-canvas {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  width: 100vw; height: 100vh;
+}
+/* page content stacks above the ambient layers */
+.acvc-page, .yti-page, .yti-page-narrow { position: relative; z-index: 1; }
