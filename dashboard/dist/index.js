@@ -99,7 +99,10 @@
     var info = null;
     function ensure() {
       try {
-        if (!info || !info.updateAvailable) return;
+        // Railway-only: the button and its redeploy guidance are meaningless
+        // on other hosts (railwayUrl exists only when Railway injected its
+        // project/service ids). Others never see this.
+        if (!info || !info.updateAvailable || !info.railwayUrl) return;
         if (document.getElementById("acvc-update-btn")) return;
         var headers = [].slice.call(document.querySelectorAll("header"));
         var bar = headers.filter(function (x) {
@@ -108,19 +111,10 @@
         if (!bar) return;
         var a = document.createElement("a");
         a.id = "acvc-update-btn";
-        if (info.railwayUrl) {
-          a.href = info.railwayUrl;
-          a.target = "_blank";
-          a.rel = "noreferrer";
-          a.title = "Version " + info.latest + " is available (you run " +
-            info.current + "). Opens your Railway service — hit Redeploy " +
-            "to pull the update.";
-        } else {
-          a.href = "#";
-          a.title = "Version " + info.latest + " is available (you run " +
-            info.current + "). Redeploy the service to pull the update.";
-          a.onclick = function (e) { e.preventDefault(); };
-        }
+        a.href = "#";
+        a.title = "Version " + info.latest + " is available (you run " +
+          info.current + "). Click for update instructions.";
+        a.onclick = function (e) { e.preventDefault(); showModal(); };
         a.textContent = "⬆ Update available";
         a.style.cssText =
           "margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;" +
@@ -134,12 +128,77 @@
         bar.appendChild(a);
       } catch (e) { /* cosmetic */ }
     }
+    function reportHref() {
+      var subject = "hermes-plugins update issue (" +
+        (info.current || "?") + " -> " + (info.latest || "?") + ")";
+      var body = "What happened after the update:\n\n\n---\n" +
+        "Running: " + (info.current || "?") + "\n" +
+        "Latest: " + (info.latest || "?") + "\n" +
+        "Rolled back: yes/no\n";
+      return "mailto:harperaa@gmail.com?subject=" +
+        encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    }
+
+    function showModal() {
+      if (document.getElementById("acvc-update-modal")) return;
+      var overlay = document.createElement("div");
+      overlay.id = "acvc-update-modal";
+      overlay.className = "acvc-update-overlay";
+      function close() { overlay.remove(); }
+      overlay.onclick = function (e) { if (e.target === overlay) close(); };
+
+      var box = document.createElement("div");
+      box.className = "acvc-update-box";
+      box.innerHTML =
+        '<div class="acvc-update-title">⬆ Update your deployment</div>' +
+        '<div class="acvc-update-sub">Version <b>' + (info.latest || "?") +
+        "</b> is published — you're running <b>" + (info.current || "?") +
+        "</b>. Redeploying pulls the update; your data and settings are on " +
+        "the volume and are kept.</div>" +
+        '<img class="acvc-update-img" alt="Railway deployments page: the three-dot menu on the ACTIVE deployment, with Redeploy highlighted" ' +
+        'src="/dashboard-plugins/ai-cyber-value-creator/dist/railway-redeploy.png">' +
+        '<ol class="acvc-update-steps">' +
+        "<li>On your Railway service page, find the <b>ACTIVE</b> deployment " +
+        "and click its <b>⋮</b> (three-dot) button.</li>" +
+        "<li>Select <b>Redeploy</b> — Railway pulls the newest image.</li>" +
+        "<li>Wait for the green <b>Deployment successful</b> status, then " +
+        "open your URL again (or just refresh this page).</li>" +
+        "</ol>" +
+        '<div class="acvc-update-rollback">' +
+        "<b>Trouble after the update?</b> Roll back: on the same page, under " +
+        "<b>HISTORY</b>, click the <b>⋮</b> on the most recent previous " +
+        "deployment and choose <b>Rollback</b>. Railway restores exactly the " +
+        "version that was running before — your data and settings stay as " +
+        "they are — and you can try the update again any time. Then " +
+        '<a class="acvc-update-report" href="' + reportHref() + '">' +
+        "report the issue to your mentor ↗</a> so it gets fixed.</div>";
+
+      var row = document.createElement("div");
+      row.className = "acvc-update-actions";
+      var cancel = document.createElement("button");
+      cancel.className = "acvc-update-cancel";
+      cancel.textContent = "Cancel";
+      cancel.onclick = close;
+      row.appendChild(cancel);
+      var go = document.createElement("a");
+      go.className = "acvc-update-go";
+      go.href = info.railwayUrl;
+      go.target = "_blank";
+      go.rel = "noreferrer";
+      go.textContent = "Open Railway ↗";
+      go.onclick = function () { close(); };
+      row.appendChild(go);
+      box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+
     function poll() {
       SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/update-check")
         .then(function (d) {
           info = d;
           var old = document.getElementById("acvc-update-btn");
-          if (old && (!d || !d.updateAvailable)) old.remove();
+          if (old && (!d || !d.updateAvailable || !d.railwayUrl)) old.remove();
           ensure();
         })
         .catch(function () { /* try again next poll */ });
