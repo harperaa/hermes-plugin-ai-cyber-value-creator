@@ -243,3 +243,34 @@ def test_roadmap_independent_when_levels_absent(home, scripted, badge):
     assert ps["levelStatus"]["installed"] is False
     queue[:] = [{"reply": "Q"}]
     assert coach.start("create-value-icp")["ok"]
+
+
+def test_prior_knowledge_mines_full_levels_context(home, scripted, badge):
+    import json as _json
+    (badge / "state.json").write_text(_json.dumps({
+        "level": 2,
+        "badges": [{"level": 2, "name": "The Listener", "emoji": "👂"}],
+        "history": [{
+            "level": 2, "rationale": "Real customers.",
+            "strengths": ["paying pilot"],
+            "transcript": [
+                {"role": "examiner", "text": "What are you building?"},
+                {"role": "builder", "text": "AI intake for small law firms in Texas"},
+                {"role": "builder", "text": "One paying customer at $400/mo"},
+            ],
+        }],
+        "checklist": {"targetLevel": 3, "items": [
+            {"status": "done", "text": "Map acquisition paths",
+             "evidence": "acquisition-paths.md with all 12 accounts"},
+            {"status": "open", "text": "x", "evidence": ""},
+        ]},
+    }))
+    pk = coach._prior_knowledge("create-value-icp")
+    assert "AI intake for small law firms in Texas" in pk
+    assert "One paying customer" in pk
+    assert "Map acquisition paths" in pk and "acquisition-paths.md" in pk
+    # a levels reset must wipe that context from the coach's view
+    (badge / "state.json").write_text(_json.dumps({
+        "level": 0, "badges": [], "history": [], "checklist": None}))
+    pk = coach._prior_knowledge("create-value-icp")
+    assert "law firms" not in pk and "acquisition-paths" not in pk

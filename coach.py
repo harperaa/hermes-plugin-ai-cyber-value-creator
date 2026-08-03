@@ -252,6 +252,11 @@ def _prior_knowledge(task_id: str) -> str:
         parts.append(line)
         if lv.get("strengths"):
             parts.append("Assessed strengths: " + "; ".join(lv["strengths"]))
+        if lv.get("interviewAnswers"):
+            parts.append("In their level interview, in their own words, they "
+                         "said: " + lv["interviewAnswers"])
+        for pa in lv.get("provenActions") or []:
+            parts.append("Verified done (level prescription): " + pa)
     state = load_state()
     for phase in ALL_PHASES:
         for t in phase.tasks:
@@ -384,6 +389,18 @@ def level_status() -> dict:
         cl = data.get("checklist") or {}
         items = cl.get("items") or []
         done = sum(1 for i in items if i.get("status") == "done")
+        # The mentee's own words from their last level interview + the
+        # evidence behind defended prescription steps — real business facts
+        # the Coach must never re-ask. Reset on the levels page wipes these
+        # (we read the live file every call, so resets propagate instantly).
+        answers = [m.get("text", "") for m in (last.get("transcript") or [])
+                   if m.get("role") == "builder"]
+        interview = " | ".join(a.strip() for a in answers if a.strip())[:1500]
+        proven = []
+        for i in items:
+            if i.get("status") == "done" and i.get("evidence"):
+                proven.append(f"{i.get('text', '')[:80]} — evidence: "
+                              f"{i['evidence'][:140]}")
         cur = LEVEL_SUMMARIES.get(level)
         nxt = LEVEL_SUMMARIES.get(level + 1)
         return {
@@ -396,6 +413,8 @@ def level_status() -> dict:
                      if nxt else None),
             "rationale": (last.get("rationale") or "")[:400],
             "strengths": [str(x)[:160] for x in (last.get("strengths") or [])][:5],
+            "interviewAnswers": interview,
+            "provenActions": proven[:6],
             "checklist": ({"done": done, "total": len(items),
                            "targetLevel": cl.get("targetLevel")} if items else None),
         }
