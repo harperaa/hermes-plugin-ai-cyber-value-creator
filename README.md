@@ -1,5 +1,8 @@
 # AI Cyber Value Creator — Hermes Plugin
 
+> Aligned with the mentoring of **Dr. Allen Harper, AI Cyber Value Creator** — join the community at [AI Cyber Value Creators on Skool](https://www.skool.com/ai-cyber-value-creators).
+
+
 The AI Cyber Value Creator methodology as a running program inside
 [Hermes Agent](https://hermes-agent.nousresearch.com): first lay the
 **Create Value foundation** (ICP → Problems → Solutions → Offer → Elevator
