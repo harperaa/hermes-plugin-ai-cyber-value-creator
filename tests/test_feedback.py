@@ -157,3 +157,65 @@ def test_identity_saved_and_email_edit_migrates(home):
                         name="Al Mentee", email="new@x.com")
     assert sent["payload"]["previousEmail"] == "old@x.com"
     assert feedback.get_identity()["email"] == "new@x.com"
+
+
+def test_detail_dossier_and_ssl_guard(home, monkeypatch):
+    import importlib
+    coach = importlib.import_module(f"{PKG}.coach")
+    context_store = importlib.import_module(f"{PKG}.context_store")
+    # level state with closed+open items and a verdict
+    vcl = home / "value-creator-level"
+    vcl.mkdir(parents=True, exist_ok=True)
+    (vcl / "state.json").write_text(json.dumps({
+        "level": 1,
+        "badges": [{"level": 1, "name": "The Spark", "emoji": "🔥"}],
+        "history": [{"level": 1, "rationale": "r", "securityNotes": "sn",
+                     "ladders": {"ai": {"rung": 1, "misses": 0}}}],
+        "checklist": {"targetLevel": 2, "items": [
+            {"id": "L2-1", "text": "did it", "proof": "p", "status": "done",
+             "evidence": "the receipts", "attempts": 1, "challenge": "q?"},
+            {"id": "L2-2", "text": "todo", "proof": "p", "status": "open",
+             "attempts": 0},
+        ]}}))
+    # a coach thread
+    cst = coach.load_state()
+    cst["steps"]["create-value-icp"] = {
+        "status": "active", "summary": "",
+        "messages": [{"role": "coach", "text": "Who do you serve?"},
+                     {"role": "mentee", "text": "Texas law firms"}],
+        "startedAt": 1, "completedAt": None}
+    coach.save_state(cst)
+    context_store.apply_company_context({"icp": "Texas law firms"})
+
+    sent = {}
+
+    class FakeResp:
+        def read(self):
+            return b'{"ok": true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_open(req, timeout=0):
+        sent["payload"] = json.loads(req.data.decode())
+        return FakeResp()
+
+    with patch.object(feedback.urllib.request, "urlopen", fake_open):
+        r = feedback.submit("green", "n", "a", "s", True,
+                            name="Al", email="m@x.com")
+    assert r["ok"], r
+    d = sent["payload"]["detail"]
+    assert d["level"]["closedItems"][0]["evidence"] == "the receipts"
+    assert d["level"]["openItems"][0]["id"] == "L2-2"
+    assert d["level"]["verdicts"][0]["securityNotes"] == "sn"
+    icp = [s2 for s2 in d["roadmap"]["steps"] if s2["id"] == "create-value-icp"][0]
+    assert icp["thread"][1]["text"] == "Texas law firms"
+    assert d["roadmap"]["companyContext"]["icp"] == "Texas law firms"
+
+    # SSL guard: plain http to a non-local host is refused
+    monkeypatch.setenv("FEEDBACK_HUB_URL", "http://evil.example.com/ingest")
+    r = feedback.submit("green", "n", "a", "s", True, name="Al", email="m@x.com")
+    assert "https" in r["error"]

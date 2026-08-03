@@ -108,6 +108,68 @@ def _level_snapshot() -> dict:
     return out
 
 
+def _level_detail() -> dict:
+    """The COMPLETE level dossier: summary, verdict history (with the
+    per-dimension ladder results and notes), closed prescription items with
+    their evidence, and the remaining open items."""
+    try:
+        path = context_store.get_hermes_home() / "value-creator-level" / "state.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    items = (data.get("checklist") or {}).get("items") or []
+    closed = [{"id": i.get("id"), "text": i.get("text"),
+               "proof": i.get("proof"), "evidence": i.get("evidence"),
+               "attempts": i.get("attempts"), "challenge": i.get("challenge")}
+              for i in items if i.get("status") == "done"]
+    open_items = [{"id": i.get("id"), "text": i.get("text"),
+                   "proof": i.get("proof"), "status": i.get("status"),
+                   "attempts": i.get("attempts")}
+                  for i in items if i.get("status") != "done"]
+    return {
+        "level": data.get("level"),
+        "badges": data.get("badges") or [],
+        "verdicts": data.get("history") or [],   # rationale, strengths, gaps,
+                                                 # security/ai/coding notes,
+                                                 # ladders, transcripts
+        "checklistTarget": (data.get("checklist") or {}).get("targetLevel"),
+        "closedItems": closed,
+        "openItems": open_items,
+    }
+
+
+def _roadmap_detail() -> dict:
+    """Every roadmap step's full working record: status, summary, and the
+    complete coach chat thread (the mentee's actual answers), plus the
+    distilled company context."""
+    steps = []
+    try:
+        from . import coach
+        from .methodology import ALL_PHASES
+        state = coach.load_state()
+        prog = progress.get_progress()
+        for phase in ALL_PHASES:
+            for task in phase.tasks:
+                st = state["steps"].get(task.id) or {}
+                steps.append({
+                    "id": task.id,
+                    "phase": phase.name,
+                    "title": task.title,
+                    "progress": prog.get(task.id, {}).get("status", "todo"),
+                    "coachStatus": st.get("status", "open"),
+                    "summary": st.get("summary", ""),
+                    "thread": st.get("messages", []),
+                })
+    except Exception:
+        pass
+    ctx = {}
+    try:
+        ctx = context_store.merged_context()
+    except Exception:
+        pass
+    return {"steps": steps, "companyContext": ctx}
+
+
 def _roadmap_snapshot() -> dict:
     try:
         prog = progress.get_progress()
@@ -173,9 +235,25 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
     }
     payload.update(_level_snapshot())
     payload.update(_roadmap_snapshot())
+    # The full dossier rides in `detail` (capped defensively — threads can
+    # be long; the hub stores it verbatim for the mentor).
+    detail = {"level": _level_detail(), "roadmap": _roadmap_detail()}
+    detail_json = json.dumps(detail)
+    if len(detail_json) > 900_000:
+        detail = {"level": _level_detail(),
+                  "roadmap": {"steps": [], "companyContext": {},
+                              "truncated": "detail exceeded 900KB"}}
+    payload["detail"] = detail
+
+    url = _env("FEEDBACK_HUB_URL")
+    # SSL is mandatory: mentee data never travels plaintext (localhost is
+    # exempt for development).
+    host_ok = url.startswith("https://") or         url.startswith(("http://127.0.0.1", "http://localhost"))
+    if not host_ok:
+        return {"error": "feedback hub URL must use https"}
 
     req = urllib.request.Request(
-        _env("FEEDBACK_HUB_URL"),
+        url,
         data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {_env('FEEDBACK_HUB_TOKEN')}",
                  "Content-Type": "application/json",
