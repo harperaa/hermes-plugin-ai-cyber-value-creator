@@ -373,7 +373,7 @@
         "  </div></div>" +
         '  <div class="acvc-fb-notecol">' +
         '    <label>Quick note next to your pick</label>' +
-        '    <textarea id="acvc-fb-note" rows="6" placeholder="One or two lines about the week…"></textarea>' +
+        '    <textarea id="acvc-fb-note" rows="6" placeholder="One or two lines that explain why you are feeling this way. Be honest — we need the feedback to help you."></textarea>' +
         "  </div>" +
         "</div>" +
         "<label>" + (daily ? "What did you get done since your last check-in?"

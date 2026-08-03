@@ -704,3 +704,5 @@
 .acvc-fb-feel { margin: 0 0 2px !important; }
 /* bottom-align the name/email inputs even when one label wraps */
 .acvc-fb-ident-fields > div { display: flex; flex-direction: column; justify-content: flex-end; }
+/* align the note header with 'How are you feeling?' beside it */
+.acvc-fb-notecol > label:first-child { margin-top: 0 !important; }
