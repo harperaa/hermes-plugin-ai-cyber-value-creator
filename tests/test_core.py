@@ -292,6 +292,7 @@ def test_register_wires_everything():
     assert set(ctx.tools) == {
         "record_company_context", "get_company_context",
         "value_creator_status", "start_value_step",
+        "ask_user_question",
     }
     assert set(ctx.commands) == {"value-creator", "value-step"}
     assert {
