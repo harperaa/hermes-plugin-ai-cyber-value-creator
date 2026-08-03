@@ -480,13 +480,15 @@ class FeedbackBody(BaseModel):
     statusAck: bool = False
     name: str = ""
     email: str = ""
+    nextStep: str = ""
 
 
 @router.post("/feedback/submit")
 def feedback_submit(body: FeedbackBody) -> dict:
     result = _feedback().submit(body.sentiment, body.note, body.activities,
                                 body.stuck, body.statusAck,
-                                name=body.name, email=body.email)
+                                name=body.name, email=body.email,
+                                next_step=body.nextStep)
     if result.get("error"):
         raise HTTPException(status_code=400, detail=str(result["error"]))
     return result

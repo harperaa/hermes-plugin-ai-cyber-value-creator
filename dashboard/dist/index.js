@@ -373,14 +373,16 @@
         "  </div></div>" +
         '  <div class="acvc-fb-notecol">' +
         '    <label>Quick note next to your pick</label>' +
-        '    <textarea id="acvc-fb-note" rows="6" placeholder="One or two lines that explain why you are feeling this way. Be honest — we need the feedback to help you."></textarea>' +
+        '    <textarea id="acvc-fb-note" rows="4" placeholder="One or two lines that explain why you are feeling this way. Be honest — we need the feedback to help you."></textarea>' +
         "  </div>" +
         "</div>" +
         "<label>" + (daily ? "What did you get done since your last check-in?"
                             : "What did you get done this week?") + "</label>" +
-        '<textarea id="acvc-fb-activities" rows="3" placeholder="Summary of the activities you performed…"></textarea>' +
+        '<textarea id="acvc-fb-activities" rows="2" placeholder="Summary of the activities you performed…"></textarea>' +
+        "<label>What is your very next step?</label>" +
+        '<textarea id="acvc-fb-next" rows="2" placeholder="The one concrete thing you\'ll do next…"></textarea>' +
         '<label>Anything you\'re stuck on and need assistance with?</label>' +
-        '<textarea id="acvc-fb-stuck" rows="3" placeholder="Blockers, questions, things you want your mentor to see…"></textarea>' +
+        '<textarea id="acvc-fb-stuck" rows="2" placeholder="Blockers, questions, things you want your mentor to see…"></textarea>' +
         '<label class="acvc-fb-ack"><input type="checkbox" id="acvc-fb-ack"> ' +
         "I agree that my current level and roadmap completion status will be " +
         "submitted as part of this feedback. <b>(required)</b></label>" +
@@ -426,7 +428,7 @@
       function refreshSend() {
         // Everything is required: identity, a light, the three text
         // fields, and the acknowledgement.
-        var filled = ["acvc-fb-note", "acvc-fb-activities", "acvc-fb-stuck"]
+        var filled = ["acvc-fb-note", "acvc-fb-activities", "acvc-fb-next", "acvc-fb-stuck"]
           .every(function (id) {
             return box.querySelector("#" + id).value.trim().length > 0;
           });
@@ -455,6 +457,7 @@
             note: box.querySelector("#acvc-fb-note").value,
             activities: box.querySelector("#acvc-fb-activities").value,
             stuck: box.querySelector("#acvc-fb-stuck").value,
+            nextStep: box.querySelector("#acvc-fb-next").value,
             statusAck: box.querySelector("#acvc-fb-ack").checked,
             name: box.querySelector("#acvc-fb-name").value,
             email: box.querySelector("#acvc-fb-email").value,

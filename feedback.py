@@ -199,7 +199,8 @@ def status() -> dict:
 
 
 def submit(sentiment: str, note: str, activities: str, stuck: str,
-           status_ack: bool, name: str = "", email: str = "") -> dict:
+           status_ack: bool, name: str = "", email: str = "",
+           next_step: str = "") -> dict:
     if not configured():
         return {"error": "feedback hub not configured"}
     name = (name or "").strip()
@@ -219,6 +220,8 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
     if not (stuck or "").strip():
         return {"error": "the stuck/assistance field is required "
                          "(write 'nothing' if you're unblocked)"}
+    if not (next_step or "").strip():
+        return {"error": "your very next step is required"}
     prev_ident = get_identity()
     payload = {
         "email": email,
@@ -231,6 +234,7 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
         "note": (note or "").strip()[:2000],
         "activities": (activities or "").strip()[:8000],
         "stuck": (stuck or "").strip()[:8000],
+        "nextStep": (next_step or "").strip()[:2000],
         "statusAck": True,
     }
     payload.update(_level_snapshot())

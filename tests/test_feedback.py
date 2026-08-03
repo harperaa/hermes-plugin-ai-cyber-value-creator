@@ -61,6 +61,8 @@ def test_submit_requires_everything(home):
     assert "note" in feedback.submit("green", "", "a", "s", True, **kw)["error"]
     assert "activities" in feedback.submit("green", "n", "", "s", True, **kw)["error"]
     assert "stuck" in feedback.submit("green", "n", "a", "", True, **kw)["error"]
+    assert "next step" in feedback.submit("green", "n", "a", "s", True,
+                                          next_step="", **kw)["error"]
 
 
 def test_submit_assembles_and_posts(home):
@@ -97,7 +99,8 @@ def test_submit_assembles_and_posts(home):
     with patch.object(feedback.urllib.request, "urlopen", fake_open):
         r = feedback.submit("yellow", "solid week", "shipped funnel",
                             "stuck on ads", True,
-                            name="Al Mentee", email="mentee@example.com")
+                            name="Al Mentee", email="mentee@example.com",
+                            next_step="call two more brokers")
     assert r["ok"], r
     p = sent["payload"]
     assert sent["url"] == "https://hub.example.com/ingest"
@@ -122,7 +125,7 @@ def test_submit_surfaces_hub_errors(home):
 
     with patch.object(feedback.urllib.request, "urlopen", boom):
         r = feedback.submit("green", "n", "a", "s", True,
-                            name="Al", email="m@x.com")
+                            name="Al", email="m@x.com", next_step="x")
     assert "could not reach" in r["error"]
     assert feedback.status()["freshness"] == "yellow"   # not recorded
 
@@ -146,7 +149,7 @@ def test_identity_saved_and_email_edit_migrates(home):
 
     with patch.object(feedback.urllib.request, "urlopen", fake_open):
         feedback.submit("green", "n", "a", "s", True,
-                        name="Al Mentee", email="old@x.com")
+                        name="Al Mentee", email="old@x.com", next_step="x")
     ident = feedback.get_identity()
     assert ident == {"name": "Al Mentee", "email": "old@x.com"}
     assert feedback.status()["identity"]["email"] == "old@x.com"
@@ -154,7 +157,7 @@ def test_identity_saved_and_email_edit_migrates(home):
     # editing the email carries previousEmail so the hub re-keys records
     with patch.object(feedback.urllib.request, "urlopen", fake_open):
         feedback.submit("green", "n", "a", "s", True,
-                        name="Al Mentee", email="new@x.com")
+                        name="Al Mentee", email="new@x.com", next_step="x")
     assert sent["payload"]["previousEmail"] == "old@x.com"
     assert feedback.get_identity()["email"] == "new@x.com"
 
@@ -205,7 +208,7 @@ def test_detail_dossier_and_ssl_guard(home, monkeypatch):
 
     with patch.object(feedback.urllib.request, "urlopen", fake_open):
         r = feedback.submit("green", "n", "a", "s", True,
-                            name="Al", email="m@x.com")
+                            name="Al", email="m@x.com", next_step="x")
     assert r["ok"], r
     d = sent["payload"]["detail"]
     assert d["level"]["closedItems"][0]["evidence"] == "the receipts"
@@ -217,5 +220,6 @@ def test_detail_dossier_and_ssl_guard(home, monkeypatch):
 
     # SSL guard: plain http to a non-local host is refused
     monkeypatch.setenv("FEEDBACK_HUB_URL", "http://evil.example.com/ingest")
-    r = feedback.submit("green", "n", "a", "s", True, name="Al", email="m@x.com")
+    r = feedback.submit("green", "n", "a", "s", True, name="Al", email="m@x.com",
+                        next_step="x")
     assert "https" in r["error"]
