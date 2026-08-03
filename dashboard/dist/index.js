@@ -137,12 +137,21 @@
       }
       var a = parse(info.current), b = parse(info.latest);
       if (a == null || b == null || b <= a) return "";
-      var hours = Math.floor((b - a) / 3600000);
+      var mins = Math.floor((b - a) / 60000);
+      var hours = Math.floor(mins / 60);
       var days = Math.floor(hours / 24);
-      var rem = hours % 24;
       var parts = [];
-      if (days) parts.push(days + (days === 1 ? " day" : " days"));
-      if (rem || !days) parts.push(rem + (rem === 1 ? " hour" : " hours"));
+      if (days) {
+        parts.push(days + (days === 1 ? " day" : " days"));
+        var hr = hours % 24;
+        if (hr) parts.push(hr + (hr === 1 ? " hour" : " hours"));
+      } else if (hours) {
+        parts.push(hours + (hours === 1 ? " hour" : " hours"));
+        var mr = mins % 60;
+        if (mr) parts.push(mr + (mr === 1 ? " minute" : " minutes"));
+      } else {
+        parts.push(mins + (mins === 1 ? " minute" : " minutes"));
+      }
       return " Your deployment is " + parts.join(" and ") + " behind.";
     }
 
