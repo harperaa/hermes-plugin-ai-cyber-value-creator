@@ -128,6 +128,24 @@
         bar.appendChild(a);
       } catch (e) { /* cosmetic */ }
     }
+    function behindText() {
+      // Versions are America/New_York wall-clock stamps: YYYY.MMDD.HHMM.
+      function parse(v) {
+        var m = /^(\d{4})\.(\d{2})(\d{2})\.(\d{2})(\d{2})$/.exec(v || "");
+        if (!m) return null;
+        return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+      }
+      var a = parse(info.current), b = parse(info.latest);
+      if (a == null || b == null || b <= a) return "";
+      var hours = Math.floor((b - a) / 3600000);
+      var days = Math.floor(hours / 24);
+      var rem = hours % 24;
+      var parts = [];
+      if (days) parts.push(days + (days === 1 ? " day" : " days"));
+      if (rem || !days) parts.push(rem + (rem === 1 ? " hour" : " hours"));
+      return " Your deployment is " + parts.join(" and ") + " behind.";
+    }
+
     function reportHref() {
       var subject = "hermes-plugins update issue (" +
         (info.current || "?") + " -> " + (info.latest || "?") + ")";
@@ -153,7 +171,8 @@
         '<div class="acvc-update-title">⬆ Update your deployment</div>' +
         '<div class="acvc-update-sub">Version <b>' + (info.latest || "?") +
         "</b> is published — you're running <b>" + (info.current || "?") +
-        "</b>. Redeploying pulls the update; your data and settings are on " +
+        "</b>." + behindText() +
+        " Redeploying pulls the update; your data and settings are on " +
         "the volume and are kept.</div>" +
         '<img class="acvc-update-img" alt="Railway deployments page: the three-dot menu on the ACTIVE deployment, with Redeploy highlighted" ' +
         'src="/dashboard-plugins/ai-cyber-value-creator/dist/railway-redeploy.png">' +
