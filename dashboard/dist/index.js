@@ -32,8 +32,14 @@
               window.location.assign("/env");
             }
           } else {
-            // setup already complete — disarm without redirecting
+            // Setup already complete (e.g. template ships a key): the first
+            // visit lands on the product — the Roadmap. Only redirect off
+            // the generic landing pages so deep links stay untouched.
             localStorage.setItem("acvc-first-login-redirect", "1");
+            var p = window.location.pathname;
+            if (p === "/" || p === "/chat") {
+              window.location.assign("/roadmap");
+            }
           }
         })
         .catch(function () { /* fetch failed — keep the shot for next load */ });
