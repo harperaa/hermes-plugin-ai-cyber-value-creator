@@ -306,11 +306,13 @@
           "border-radius:999px;text-decoration:none;color:#04211c;" +
           "cursor:pointer;order:97;" +
           "background:" + COLORS[f] + ";" +
-          (f !== "green"
-            ? "animation:acvc-feedback-pulse 2.2s ease-in-out infinite;"
-            : dailyDue
-              ? "animation:acvc-feedback-pulse-daily 1.5s ease-in-out infinite;"
-              : "");
+          (f === "yellow"
+            ? "animation:acvc-feedback-pulse-yellow 1.5s ease-in-out infinite;"
+            : f === "red"
+              ? "animation:acvc-feedback-pulse-red 1.3s ease-in-out infinite;"
+              : dailyDue
+                ? "animation:acvc-feedback-pulse-daily 1.5s ease-in-out infinite;"
+                : "");
         btn.title = fstat.lastSubmittedAt
           ? "Last check-in: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString()
           : "No check-in yet — your mentor is waiting to hear from you";

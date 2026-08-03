@@ -605,9 +605,14 @@
 .acvc-update-report:hover { text-decoration: underline; }
 
 /* ---- weekly feedback: pill pulse + stoplight modal ---- */
-@keyframes acvc-feedback-pulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.35); }
-  50% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.8); }
+/* weekly nags overdue: same unmistakable pulse, in their own color */
+@keyframes acvc-feedback-pulse-yellow {
+  0%, 100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.45); transform: scale(1); }
+  50% { box-shadow: 0 0 26px rgba(245, 158, 11, 1); transform: scale(1.07); }
+}
+@keyframes acvc-feedback-pulse-red {
+  0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 28px rgba(239, 68, 68, 1); transform: scale(1.08); }
 }
 /* daily check-in due (>24h since last submit): unmistakable green pulse */
 @keyframes acvc-feedback-pulse-daily {
