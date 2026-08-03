@@ -385,6 +385,22 @@
     var armedSt = useState(false); var resetArmed = armedSt[0], setResetArmed = armedSt[1];
     var els = [];
 
+    if (cs.status === "open" && A.levelGate) {
+      return h("a", {
+        href: "/level",
+        onClick: function (e) { e.preventDefault(); window.location.assign("/level"); },
+        title: "Establish your level first — take the assessment on the Your Level page",
+        className: "acvc-link",
+        style: { color: MUTED, fontSize: 12 },
+      }, "🔒 establish your level first");
+    }
+    if (cs.status === "open" && cs.lockedBy) {
+      return h("span", {
+        className: "acvc-link",
+        title: "Finish the previous foundation step first: " + cs.lockedBy,
+        style: { color: MUTED, fontSize: 12, cursor: "not-allowed" },
+      }, "🔒 " + cs.lockedBy.slice(0, 22) + " first");
+    }
     var label;
     if (cs.status === "complete") label = expanded ? "hide ▴" : "review ▾";
     else if (cs.status === "active") label = expanded ? "hide ▴" : "continue ▾";
@@ -439,16 +455,27 @@
     var draftSt = useState("");
     var draft = draftSt[0], setDraft = draftSt[1];
     var endRef = useRef(null);
+    var inputRef = useRef(null);
     useEffect(function () {
       if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      // When the Coach's next question lands (or the panel opens on an
+      // active session), put the cursor straight back in the input.
+      if (!busy && inputRef.current && cs.status === "active") {
+        inputRef.current.focus();
+      }
     }, [(cs.messages || []).length, busy]);
+
+    var pendingSt = useState(null);   // optimistic echo until the server copy lands
+    var pending = pendingSt[0], setPending = pendingSt[1];
 
     function send() {
       var t = draft.trim();
       if (!t || busy) return;
       setDraft("");
+      setPending({ text: t, atLen: (cs.messages || []).length });
       A.onAnswer(task.id, t);
     }
+    var showPending = pending && (cs.messages || []).length === pending.atLen;
 
     return h("div", { className: "acvc-coach-panel", style: { borderColor: hexToRgba(props.accent || "#6366f1", 0.35) } },
       cs.guidance && cs.guidance.length
@@ -466,6 +493,7 @@
                 className: "acvc-coach-msg " + (m.role === "coach" ? "acvc-coach-msg-coach" : "acvc-coach-msg-user"),
               }, m.text);
             }),
+            showPending ? h("div", { className: "acvc-coach-msg acvc-coach-msg-user" }, pending.text) : null,
             busy ? h("div", { className: "acvc-coach-msg acvc-coach-msg-coach acvc-coach-thinking" },
               h("span", null, "●"), h("span", null, "●"), h("span", null, "●")) : null,
             h("div", { ref: endRef }))
@@ -477,14 +505,15 @@
             "✅ Complete", cs.summary ? " — " + cs.summary : "")
         : h("div", { className: "acvc-coach-input" },
             h("textarea", {
+              ref: inputRef,
               className: "acvc-coach-textarea",
               rows: 2,
-              placeholder: "Work the step — answer the Coach…",
+              placeholder: "Work the step — answer the Coach… (Enter sends, Shift+Enter for a new line)",
               value: draft,
               disabled: busy || cs.status === "open",
               onChange: function (e) { setDraft(e.target.value); },
               onKeyDown: function (e) {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               },
             }),
             h("button", {
@@ -545,6 +574,109 @@
     props.taskActions && props.taskActions.expandedTask === task.id
       ? h(CoachPanel, { task: task, taskActions: props.taskActions, accent: props.accent })
       : null);
+  }
+
+  // -------------------------------------------------------------------------
+  // Your Level — status + badge from the value-creator-level plugin; the
+  // whole roadmap is gated on an established badge.
+  // -------------------------------------------------------------------------
+  // Exact replica of the value-creator-level badge medallion (ring, dark
+  // face, shine, hover tilt) so the roadmap shows the SAME badge.
+  var LEVEL_BADGE_COLORS = {
+    1: ["#ff6b35", "#ffd166"],
+    2: ["#4ecdc4", "#a8e6cf"],
+    3: ["#5b8cff", "#9d6bff"],
+    4: ["#b56bff", "#ff6bd6"],
+    5: ["#ffd700", "#fff3b0"],
+  };
+
+  function LevelBadge(props) {
+    var badge = props.badge;   // {level, name, emoji} or null
+    var size = props.size || 56;
+    var ref = useRef(null);
+    var colors = badge ? (LEVEL_BADGE_COLORS[badge.level] || ["#888", "#bbb"]) : ["#3a3a4c", "#55556b"];
+    function onMove(e) {
+      var el = ref.current;
+      if (!el || !badge) return;
+      var r = el.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width - 0.5;
+      var y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = "perspective(600px) rotateY(" + x * 34 + "deg) rotateX(" + (-y * 34) + "deg) scale(1.06)";
+    }
+    function onLeave() { if (ref.current) ref.current.style.transform = ""; }
+    return h("div", {
+      ref: ref,
+      className: "acvc-lvl-badge" + (badge ? " acvc-lvl-badge-earned" : " acvc-lvl-badge-locked"),
+      style: { width: size + "px", height: size + "px", "--c1": colors[0], "--c2": colors[1] },
+      onMouseMove: onMove,
+      onMouseLeave: onLeave,
+      title: badge ? ("Level " + badge.level + " — " + badge.name) : "No badge yet",
+    },
+      h("div", { className: "acvc-lvl-badge-ring" }),
+      h("div", { className: "acvc-lvl-badge-face" },
+        h("div", { style: { fontSize: size * 0.34 + "px", lineHeight: 1 } }, badge ? badge.emoji : "🔒"),
+        h("div", { className: "acvc-lvl-badge-lvl" }, badge ? "LVL " + badge.level : "—")),
+      badge ? h("div", { className: "acvc-lvl-badge-shine" }) : null);
+  }
+
+  function LevelSection(props) {
+    var lv = props.levelStatus || { level: 0, badge: null };
+    var color = "#eab308";
+    var c = useCollapsible("acvc-level-open");
+    var open = c[0], toggleOpen = c[1];
+    var established = lv.level > 0;
+    return h("div", {
+      className: "acvc-card",
+      style: {
+        border: "1px solid " + hexToRgba(color, 0.5),
+        borderLeft: "4px solid " + color,
+        marginBottom: 24,
+      },
+    },
+      h("div", {
+        onClick: toggleOpen,
+        title: open ? "Collapse" : "Expand",
+        className: "acvc-card-head",
+        style: { background: hexToRgba(color, 0.1) },
+      },
+        h(Chevron, { open: open, color: color }),
+        h(LevelBadge, { badge: lv.badge, size: 56 }),
+        h("div", { style: { flex: 1 } },
+          h("div", { style: { display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" } },
+            h("span", { style: { fontSize: 22, fontWeight: 800, color: color } }, "Your Level"),
+            established
+              ? h("span", { style: { fontSize: 13, color: MUTED } },
+                  "Level " + lv.level + " — " + (lv.badge ? lv.badge.name : ""))
+              : h("span", { style: { fontSize: 13, color: MUTED } }, "Unranked")),
+          h("div", { style: { fontSize: 12.5, color: established ? "#16a34a" : "#f59e0b", marginTop: 3 } },
+            established
+              ? "✓ Badge established — the roadmap below is unlocked."
+              : "Take the assessment to establish your builder level — the roadmap unlocks once you hold a badge.")
+        ),
+        h("div", { style: { textAlign: "right", minWidth: 130 } },
+          h("a", {
+            href: "/level",
+            onClick: function (e) { e.preventDefault(); e.stopPropagation(); window.location.assign("/level"); },
+            className: "acvc-link",
+            style: { color: color, fontWeight: 700 },
+          }, established ? "Your Level ↗" : "Take the assessment ↗"))
+      ),
+      open
+        ? h("div", { style: { padding: "12px 18px", fontSize: 13, color: MUTED } },
+            established && lv.rationale
+              ? h("div", { style: { marginBottom: 8 } },
+                  h("b", { style: { color: TEXT } }, "Examiner's verdict: "), lv.rationale)
+              : null,
+            established && lv.checklist
+              ? h("div", null,
+                  h("b", { style: { color: TEXT } }, "Road to Level " + lv.checklist.targetLevel + ": "),
+                  lv.checklist.done + "/" + lv.checklist.total + " prescription steps verified.")
+              : null,
+            !established
+              ? "The 5-level \"Levels of AI Building\" assessment places you honestly — level, badge, and a 10-step prescription. Everything on this roadmap builds on knowing where you actually stand."
+              : null)
+        : null
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -1277,9 +1409,16 @@
     var view = viewSt[0], setView = viewSt[1];
     var pendingPhaseRef = useRef(null);
 
+    var levelSt = useState(null);
+    var levelStatus = levelSt[0], setLevelStatus = levelSt[1];
+    var levelGateSt = useState(false);
+    var levelGate = levelGateSt[0], setLevelGate = levelGateSt[1];
     var refresh = useCallback(function () {
       api("/coach")
-        .then(function (d) { if (d && d.steps) setCoach(d.steps); })
+        .then(function (d) {
+          if (d && d.steps) setCoach(d.steps);
+          if (d) { setLevelStatus(d.levelStatus || null); setLevelGate(!!d.levelGate); }
+        })
         .catch(function () { /* coach state is additive */ });
       return api("/roadmap")
         .then(function (d) { setData(d); setError(null); })
@@ -1374,6 +1513,7 @@
 
     var taskActions = {
       busyTaskId: busyTaskCreate,
+      levelGate: levelGate,
       coach: coach,
       expandedTask: expandedTask,
       onToggle: function (taskId) {
@@ -1412,6 +1552,11 @@
             h("div", { style: { color: MUTED, fontSize: 13 } }, doneTasks + " / " + totalTasks + " sub-tasks complete"),
             h(ProgressBar, { pct: pct, color: PURPLE }))
         ),
+
+        // Your Level — gates the roadmap (only when that plugin is installed)
+        levelStatus && levelStatus.installed
+          ? h(LevelSection, { levelStatus: levelStatus })
+          : null,
 
         // Foundation
         foundationPhase

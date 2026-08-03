@@ -250,7 +250,7 @@ def reset_progress():
 # ---------------------------------------------------------------------------
 
 def _coach():
-    import importlib
+    _core()  # ensures the plugin package is registered in this process
     return importlib.import_module(f"{_PKG}.coach")
 
 

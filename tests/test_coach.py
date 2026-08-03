@@ -37,6 +37,24 @@ def home(tmp_path, monkeypatch):
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def badge(home):
+    """A level badge is established for all coach tests (the roadmap is
+    gated on it); the gating test removes it explicitly."""
+    import json as _json
+    plug = home / "plugins" / "value-creator-level"
+    plug.mkdir(parents=True, exist_ok=True)
+    (plug / "plugin.yaml").write_text("name: value-creator-level\n")
+    vcl = home / "value-creator-level"
+    vcl.mkdir(parents=True, exist_ok=True)
+    (vcl / "state.json").write_text(_json.dumps({
+        "level": 1,
+        "badges": [{"level": 1, "name": "The Spark", "emoji": "🔥"}],
+        "history": [], "checklist": None,
+    }))
+    return vcl
+
+
 @pytest.fixture()
 def scripted():
     queue: list[dict] = []
@@ -161,3 +179,67 @@ def test_coach_error_lets_mentee_resend(home, scripted):
     # the failed answer must NOT be stuck in the transcript
     st = coach.public_state()["steps"]["create-value-icp"]
     assert all(m["text"] != "my answer" for m in st["messages"])
+
+
+def test_foundation_is_sequential(home, scripted):
+    queue, _ = scripted
+    # step 2 locked while step 1 incomplete
+    r = coach.start("create-value-problems")
+    assert "finish the previous foundation step first" in r["error"]
+    assert "ICP" in r["error"]
+    st = coach.public_state()["steps"]
+    assert st["create-value-problems"]["lockedBy"]
+    assert st["create-value-icp"]["lockedBy"] is None
+    # flywheel steps are never locked
+    assert st["attract-referral"]["lockedBy"] is None
+    queue[:] = [{"reply": "Q"}]
+    assert coach.start("attract-referral")["ok"]
+    # completing step 1 unlocks step 2
+    queue[:] = [{"reply": "Q"}]
+    coach.start("create-value-icp")
+    queue[:] = [{"action": "reply", "reply": "next"}]
+    coach.answer("create-value-icp", "a1")
+    queue[:] = [{"action": "complete", "summary": "s", "contextValue": "The ICP"}]
+    coach.answer("create-value-icp", "confirmed")
+    queue[:] = [{"reply": "Q2"}]
+    assert coach.start("create-value-problems")["ok"]
+
+
+def test_roadmap_gated_on_level_badge(home, scripted, badge):
+    queue, _ = scripted
+    # no vcl state at all -> gate closed
+    (badge / "state.json").unlink()
+    r = coach.start("create-value-icp")
+    assert "establish your level" in r["error"]
+    ps = coach.public_state()
+    assert ps["levelGate"] is True
+    assert ps["levelStatus"]["level"] == 0
+    # badge established -> gate opens
+    import json as _json
+    vcl = home / "value-creator-level"
+    (vcl / "state.json").write_text(_json.dumps({
+        "level": 2,
+        "badges": [{"level": 2, "name": "The Listener", "emoji": "👂"}],
+        "history": [{"level": 2, "rationale": "Real customers."}],
+        "checklist": {"targetLevel": 3, "items": [
+            {"status": "done"}, {"status": "open"}]},
+    }))
+    ps = coach.public_state()
+    assert ps["levelGate"] is False
+    assert ps["levelStatus"]["badge"]["name"] == "The Listener"
+    assert ps["levelStatus"]["checklist"]["done"] == 1
+    queue[:] = [{"reply": "Q"}]
+    assert coach.start("create-value-icp")["ok"]
+
+
+def test_roadmap_independent_when_levels_absent(home, scripted, badge):
+    """No value-creator-level plugin installed -> no gate, no level analysis."""
+    queue, _ = scripted
+    import shutil
+    shutil.rmtree(home / "plugins" / "value-creator-level")
+    (badge / "state.json").unlink()
+    ps = coach.public_state()
+    assert ps["levelGate"] is False
+    assert ps["levelStatus"]["installed"] is False
+    queue[:] = [{"reply": "Q"}]
+    assert coach.start("create-value-icp")["ok"]

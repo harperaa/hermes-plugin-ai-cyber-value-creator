@@ -237,6 +237,32 @@ _TURN_SCHEMA = {
 }
 
 
+def _prior_knowledge(task_id: str) -> str:
+    """Everything already known about this mentee beyond the company context:
+    the Levels verdict and every completed roadmap step's summary — so no
+    step ever starts from scratch."""
+    parts = []
+    lv = level_status()
+    if lv["installed"] and lv["level"] > 0:
+        line = f"Builder level: {lv['level']}"
+        if lv.get("badge"):
+            line += f" ({lv['badge']['name']})"
+        if lv.get("rationale"):
+            line += f". Examiner's verdict: {lv['rationale']}"
+        parts.append(line)
+        if lv.get("strengths"):
+            parts.append("Assessed strengths: " + "; ".join(lv["strengths"]))
+    state = load_state()
+    for phase in ALL_PHASES:
+        for t in phase.tasks:
+            if t.id == task_id:
+                continue
+            st = state["steps"].get(t.id) or {}
+            if st.get("status") == "complete" and st.get("summary"):
+                parts.append(f"Completed step '{t.title}': {st['summary']}")
+    return "\n".join(f"- {p}" for p in parts) if parts else "- (nothing yet)"
+
+
 def _persona(task_id: str) -> str:
     found = phase_for_task(task_id)
     phase, task = found
@@ -253,7 +279,16 @@ def _persona(task_id: str) -> str:
         f"CURRENT STEP: {task.title} (phase: {phase.name})\n"
         f"WHY THIS STEP: {task.blurb}\n"
         f"METHOD:\n{bullets}\n\n"
-        f"COMPANY CONTEXT (live):\n{ctx_md}\n"
+        f"COMPANY CONTEXT (live):\n{ctx_md}\n\n"
+        f"PRIOR KNOWLEDGE (from their level assessment and completed steps):\n"
+        f"{_prior_knowledge(task_id)}\n\n"
+        "NEVER START FROM SCRATCH: mine COMPANY CONTEXT and PRIOR KNOWLEDGE "
+        "before asking anything. If they already told the system something "
+        "(a niche, an audience, an offer idea), take it as INPUT — recap it "
+        "in one quick line, then ask only about the genuine gaps this step "
+        "still needs. If what's already known substantially covers this "
+        "step's deliverable, summarize it back, get one light confirmation, "
+        "and complete. Making the mentee repeat themselves is a failure.\n"
     )
     if task.brief:
         base += f"\nFULL STEP BRIEF:\n{task.brief}\n"
@@ -288,9 +323,79 @@ def _convo(messages: list[dict]) -> str:
 # Flows
 # ---------------------------------------------------------------------------
 
+def levels_installed() -> bool:
+    """Is the value-creator-level plugin installed? The two plugins are
+    independent — the level gate/section only exist when both are present.
+    Checks the user-install dir and the container's bundled dir."""
+    candidates = [
+        context_store.get_hermes_home() / "plugins" / "value-creator-level" / "plugin.yaml",
+    ]
+    import pathlib
+    candidates.append(pathlib.Path("/opt/hermes/plugins/value-creator-level/plugin.yaml"))
+    return any(c.exists() for c in candidates)
+
+
+def level_status() -> dict:
+    """Read the value-creator-level plugin's state (sibling plugin, shared
+    volume) — the roadmap is gated on an established badge (only when that
+    plugin is installed)."""
+    if not levels_installed():
+        return {"installed": False, "level": 0, "badge": None,
+                "rationale": "", "strengths": [], "checklist": None}
+    try:
+        path = context_store.get_hermes_home() / "value-creator-level" / "state.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        level = int(data.get("level", 0) or 0)
+        badges = data.get("badges") or []
+        badge = badges[-1] if badges else None
+        history = data.get("history") or []
+        last = history[-1] if history else {}
+        cl = data.get("checklist") or {}
+        items = cl.get("items") or []
+        done = sum(1 for i in items if i.get("status") == "done")
+        return {
+            "installed": True,
+            "level": level,
+            "badge": ({"name": badge.get("name"), "emoji": badge.get("emoji"),
+                       "level": badge.get("level")} if badge else None),
+            "rationale": (last.get("rationale") or "")[:400],
+            "strengths": [str(x)[:160] for x in (last.get("strengths") or [])][:5],
+            "checklist": ({"done": done, "total": len(items),
+                           "targetLevel": cl.get("targetLevel")} if items else None),
+        }
+    except (OSError, ValueError, TypeError):
+        return {"installed": True, "level": 0, "badge": None,
+                "rationale": "", "strengths": [], "checklist": None}
+
+
+def prior_incomplete(task_id: str) -> Optional[str]:
+    """For FOUNDATION steps: the title of the previous step if it isn't done
+    yet (foundation is strictly sequential); None when clear to start."""
+    found = phase_for_task(task_id)
+    if not found:
+        return None
+    phase, task = found
+    if not phase.foundation:
+        return None
+    prog = progress.get_progress()
+    for t in phase.tasks:
+        if t.id == task_id:
+            return None
+        if prog.get(t.id, {}).get("status") != "done":
+            return t.title
+    return None
+
+
 def start(task_id: str) -> dict:
     if not phase_for_task(task_id):
         return {"error": f"unknown taskId: {task_id}"}
+    lv = level_status()
+    if lv["installed"] and lv["level"] < 1:
+        return {"error": "establish your level first — take the assessment "
+                         "on the Your Level page"}
+    blocker = prior_incomplete(task_id)
+    if blocker:
+        return {"error": f"finish the previous foundation step first: {blocker}"}
     with _LOCK:
         state = load_state()
         step = _step(state, task_id)
@@ -416,6 +521,7 @@ def reset(task_id: str) -> dict:
 
 def public_state() -> dict:
     state = load_state()
+    lv = level_status()
     steps = {}
     for phase in ALL_PHASES:
         for task in phase.tasks:
@@ -425,5 +531,7 @@ def public_state() -> dict:
                 "messages": s.get("messages", []),
                 "summary": s.get("summary", ""),
                 "guidance": GUIDANCE.get(task.id, []),
+                "lockedBy": prior_incomplete(task.id),
             }
-    return {"steps": steps}
+    return {"steps": steps, "levelStatus": lv,
+            "levelGate": lv["installed"] and lv["level"] < 1}

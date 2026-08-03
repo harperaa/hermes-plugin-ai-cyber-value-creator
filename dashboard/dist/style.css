@@ -481,3 +481,52 @@
   font-weight: 600;
   color: color-mix(in srgb, var(--color-primary, #14b8a6) 80%, currentColor);
 }
+
+/* ---- Your Level badge medallion (exact replica of the levels page badge:
+   conic ring, dark face, shine sweep, hover tilt) ---- */
+.acvc-lvl-badge {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 50%;
+  transition: transform 0.18s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.acvc-lvl-badge-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 20deg, var(--c1), var(--c2), var(--c1));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c1) 55%, transparent),
+              inset 0 0 10px rgba(0, 0, 0, 0.35);
+}
+.acvc-lvl-badge-locked .acvc-lvl-badge-ring {
+  box-shadow: none;
+  opacity: 0.6;
+}
+.acvc-lvl-badge-face {
+  position: absolute; inset: 7%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.16), transparent 55%),
+    #191926;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  transform: translateZ(14px);
+}
+.acvc-lvl-badge-lvl {
+  font-size: 7px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--c2, #9aa0b4);
+}
+.acvc-lvl-badge-locked .acvc-lvl-badge-lvl { color: #9aa0b4; }
+.acvc-lvl-badge-shine {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.28) 48%, transparent 62%);
+  background-size: 260% 100%;
+  animation: acvc-lvl-shine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes acvc-lvl-shine {
+  0%, 60% { background-position: 130% 0; }
+  100% { background-position: -60% 0; }
+}
+.acvc-lvl-badge-locked { filter: saturate(0.2); }
