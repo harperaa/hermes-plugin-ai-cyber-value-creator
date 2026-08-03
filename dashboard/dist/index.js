@@ -237,6 +237,170 @@
   })();
 
   // -------------------------------------------------------------------------
+  // Weekly feedback pill — left of the update pill when both show. Green
+  // when submitted within 7 days, yellow (pulsing) past a week or never,
+  // red (pulsing) past two weeks. Opens the stoplight check-in modal.
+  // Appears only when the mentor's Feedback Hub is configured.
+  // -------------------------------------------------------------------------
+  (function feedbackPill() {
+    var fstat = null;
+    var COLORS = {
+      green: "linear-gradient(120deg,#34d399,#a7f3d0)",
+      yellow: "linear-gradient(120deg,#f59e0b,#fde68a)",
+      red: "linear-gradient(120deg,#ef4444,#fca5a5)",
+    };
+    function ensure() {
+      try {
+        if (!fstat || !fstat.configured) return;
+        var btn = document.getElementById("acvc-feedback-btn");
+        if (!btn) {
+          var headers = [].slice.call(document.querySelectorAll("header"));
+          var bar = headers.filter(function (x) {
+            return !/lg:hidden/.test(String(x.className));
+          })[0] || headers[0];
+          if (!bar) return;
+          btn = document.createElement("a");
+          btn.id = "acvc-feedback-btn";
+          btn.href = "#";
+          btn.textContent = "📝 Weekly feedback";
+          btn.onclick = function (e) { e.preventDefault(); showFeedbackModal(); };
+          bar.style.display = "flex";
+          bar.style.alignItems = "center";
+          bar.appendChild(btn);
+        }
+        var f = fstat.freshness || "yellow";
+        btn.style.cssText =
+          "margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;" +
+          "letter-spacing:0.04em;padding:4px 12px;border-radius:999px;" +
+          "text-decoration:none;color:#1a1200;cursor:pointer;order:97;" +
+          "background:" + COLORS[f] + ";" +
+          (f === "green" ? "" :
+            "animation:acvc-feedback-pulse 2.2s ease-in-out infinite;");
+        btn.title = fstat.lastSubmittedAt
+          ? "Last check-in: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString()
+          : "No weekly check-in yet — your mentor is waiting to hear from you";
+        // sit LEFT of the update pill when it exists
+        var up = document.getElementById("acvc-update-btn");
+        if (up) { up.style.order = "98"; up.style.marginLeft = "8px"; }
+      } catch (e) { /* cosmetic */ }
+    }
+    function poll() {
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/feedback/status")
+        .then(function (d) {
+          fstat = d;
+          var old = document.getElementById("acvc-feedback-btn");
+          if (old && (!d || !d.configured)) old.remove();
+          ensure();
+        })
+        .catch(function () {});
+    }
+
+    function light(color, face, label) {
+      return '<button type="button" class="acvc-fb-light acvc-fb-' + color +
+        '" data-c="' + color + '" title="' + label + '">' +
+        '<span class="acvc-fb-face">' + face + "</span></button>";
+    }
+
+    function showFeedbackModal() {
+      if (document.getElementById("acvc-fb-modal")) return;
+      var overlay = document.createElement("div");
+      overlay.id = "acvc-fb-modal";
+      overlay.className = "acvc-update-overlay";
+      function close() { overlay.remove(); }
+      overlay.onclick = function (e) { if (e.target === overlay) close(); };
+
+      var box = document.createElement("div");
+      box.className = "acvc-update-box";
+      box.innerHTML =
+        '<div class="acvc-update-title">How are you doing this week?</div>' +
+        '<div class="acvc-fb-row">' +
+        '  <div class="acvc-fb-stoplight">' +
+        light("red", "🙁", "Rough week — I need help") +
+        light("yellow", "😐", "OK week — some friction") +
+        light("green", "🙂", "Good week — on track") +
+        "  </div>" +
+        '  <div class="acvc-fb-notecol">' +
+        '    <label>Quick note next to your pick</label>' +
+        '    <textarea id="acvc-fb-note" rows="6" placeholder="One or two lines about the week…"></textarea>' +
+        "  </div>" +
+        "</div>" +
+        '<label>What did you get done this week?</label>' +
+        '<textarea id="acvc-fb-activities" rows="3" placeholder="Summary of the activities you performed…"></textarea>' +
+        '<label>Anything you\'re stuck on and need assistance with?</label>' +
+        '<textarea id="acvc-fb-stuck" rows="3" placeholder="Blockers, questions, things you want your mentor to see…"></textarea>' +
+        '<label class="acvc-fb-ack"><input type="checkbox" id="acvc-fb-ack"> ' +
+        "I agree that my current level and roadmap completion status will be " +
+        "submitted as part of this feedback. <b>(required)</b></label>" +
+        '<div class="acvc-fb-err" id="acvc-fb-err"></div>';
+
+      var row = document.createElement("div");
+      row.className = "acvc-update-actions";
+      var cancel = document.createElement("button");
+      cancel.className = "acvc-update-cancel";
+      cancel.textContent = "Cancel";
+      cancel.onclick = close;
+      var send = document.createElement("button");
+      send.className = "acvc-update-go";
+      send.style.border = "none";
+      send.style.cursor = "pointer";
+      send.textContent = "Submit feedback";
+      row.appendChild(cancel);
+      row.appendChild(send);
+      box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      var picked = "";
+      [].forEach.call(box.querySelectorAll(".acvc-fb-light"), function (b) {
+        b.onclick = function () {
+          picked = b.getAttribute("data-c");
+          [].forEach.call(box.querySelectorAll(".acvc-fb-light"), function (x) {
+            x.classList.toggle("acvc-fb-on", x === b);
+          });
+        };
+      });
+      function refreshSend() {
+        var ok = picked && box.querySelector("#acvc-fb-ack").checked;
+        send.disabled = !ok;
+        send.style.opacity = ok ? "1" : "0.45";
+      }
+      box.querySelector("#acvc-fb-ack").onchange = refreshSend;
+      box.addEventListener("click", refreshSend);
+      refreshSend();
+
+      send.onclick = function () {
+        if (send.disabled) return;
+        send.textContent = "Sending…";
+        send.disabled = true;
+        SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/feedback/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sentiment: picked,
+            note: box.querySelector("#acvc-fb-note").value,
+            activities: box.querySelector("#acvc-fb-activities").value,
+            stuck: box.querySelector("#acvc-fb-stuck").value,
+            statusAck: box.querySelector("#acvc-fb-ack").checked,
+          }),
+        }).then(function (r) {
+          if (r && r.status) fstat = r.status;
+          ensure();
+          close();
+        }).catch(function (e) {
+          box.querySelector("#acvc-fb-err").textContent =
+            String((e && e.message) || e);
+          send.textContent = "Submit feedback";
+          send.disabled = false;
+        });
+      };
+    }
+
+    poll();
+    setInterval(poll, 10 * 60 * 1000);
+    setInterval(ensure, 2000);
+  })();
+
+  // -------------------------------------------------------------------------
   // Ambient background engine — the SAME treatment as the levels page
   // (theme-tinted fixed layer + drifting dust + wandering lights), applied
   // to the Roadmap and YouTube Insights pages. Vanilla JS (React-free) so it

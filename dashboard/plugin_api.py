@@ -457,6 +457,38 @@ def update_check() -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Weekly mentee feedback (mentor's Feedback Hub — separate service)
+# ---------------------------------------------------------------------------
+
+def _feedback():
+    import importlib
+    _core()
+    return importlib.import_module(f"{_PKG}.feedback")
+
+
+@router.get("/feedback/status")
+def feedback_status() -> dict:
+    return _feedback().status()
+
+
+class FeedbackBody(BaseModel):
+    sentiment: str = ""
+    note: str = ""
+    activities: str = ""
+    stuck: str = ""
+    statusAck: bool = False
+
+
+@router.post("/feedback/submit")
+def feedback_submit(body: FeedbackBody) -> dict:
+    result = _feedback().submit(body.sentiment, body.note, body.activities,
+                                body.stuck, body.statusAck)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=str(result["error"]))
+    return result
+
+
 @router.post("/pin-cron")
 def pin_cron():
     """Pin the two scheduled jobs to the mentee's connected provider.
