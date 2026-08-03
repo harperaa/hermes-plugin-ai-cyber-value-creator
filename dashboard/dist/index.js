@@ -135,7 +135,7 @@
         "Running: " + (info.current || "?") + "\n" +
         "Latest: " + (info.latest || "?") + "\n" +
         "Rolled back: yes/no\n";
-      return "mailto:harperaa@gmail.com?subject=" +
+      return "mailto:allen@allenharper.com?subject=" +
         encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
     }
 
