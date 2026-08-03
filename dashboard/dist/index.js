@@ -242,10 +242,33 @@
   // red (pulsing) past two weeks. Opens the stoplight check-in modal.
   // Appears only when the mentor's Feedback Hub is configured.
   // -------------------------------------------------------------------------
+  function acvcBurstConfetti() {
+    var layer = document.getElementById("acvc-confetti-layer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.id = "acvc-confetti-layer";
+      layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:120;";
+      document.body.appendChild(layer);
+    }
+    var colors = ["#ffd700", "#ff6b35", "#4ecdc4", "#5b8cff", "#b56bff", "#2ecc71"];
+    for (var i = 0; i < 80; i++) {
+      var p = document.createElement("div");
+      p.className = "acvc-confetti";
+      p.style.background = colors[i % colors.length];
+      p.style.left = 50 + (Math.random() - 0.5) * 30 + "%";
+      p.style.setProperty("--dx", (Math.random() - 0.5) * 90 + "vw");
+      p.style.setProperty("--dy", -(20 + Math.random() * 60) + "vh");
+      p.style.setProperty("--rot", Math.random() * 1080 + "deg");
+      p.style.animationDelay = Math.random() * 0.3 + "s";
+      layer.appendChild(p);
+      (function (el) { setTimeout(function () { el.remove(); }, 3800); })(p);
+    }
+  }
+
   (function feedbackPill() {
     var fstat = null;
     var COLORS = {
-      green: "linear-gradient(120deg,#34d399,#a7f3d0)",
+      green: "linear-gradient(120deg,#34d399,#a7f3d0)",   // same as update pill
       yellow: "linear-gradient(120deg,#f59e0b,#fde68a)",
       red: "linear-gradient(120deg,#ef4444,#fca5a5)",
     };
@@ -269,17 +292,23 @@
           bar.appendChild(btn);
         }
         var f = fstat.freshness || "yellow";
+        // Fresh (green) = the standing "Daily feedback" invitation, calm and
+        // the same shade as the update pill. Past a week it becomes the
+        // pulsing yellow "Weekly feedback" nag; past two, pulsing red.
+        btn.textContent = f === "green" ? "📝 Daily feedback" : "📝 Weekly feedback";
         btn.style.cssText =
-          "margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;" +
-          "letter-spacing:0.04em;padding:4px 12px;border-radius:999px;" +
-          "text-decoration:none;color:#1a1200;cursor:pointer;order:97;" +
+          "margin-left:auto;margin-right:18px;flex-shrink:0;font-size:12px;" +
+          "font-weight:700;letter-spacing:0.04em;padding:4px 12px;" +
+          "border-radius:999px;text-decoration:none;color:#04211c;" +
+          "cursor:pointer;order:97;" +
           "background:" + COLORS[f] + ";" +
           (f === "green" ? "" :
             "animation:acvc-feedback-pulse 2.2s ease-in-out infinite;");
         btn.title = fstat.lastSubmittedAt
           ? "Last check-in: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString()
-          : "No weekly check-in yet — your mentor is waiting to hear from you";
-        // sit LEFT of the update pill when it exists
+          : "No check-in yet — your mentor is waiting to hear from you";
+        // sit LEFT of the update pill when it exists (kill its auto margin
+        // every tick — its own ensure() may recreate it)
         var up = document.getElementById("acvc-update-btn");
         if (up) { up.style.order = "98"; up.style.marginLeft = "8px"; }
       } catch (e) { /* cosmetic */ }
@@ -309,22 +338,46 @@
       function close() { overlay.remove(); }
       overlay.onclick = function (e) { if (e.target === overlay) close(); };
 
+      var daily = fstat && fstat.freshness === "green";
+      var ident = (fstat && fstat.identity) || { name: "", email: "" };
+      var hasIdent = !!(ident.name && ident.email);
+      var prefillEmail = ident.email || (fstat && fstat.loginEmail) || "";
       var box = document.createElement("div");
       box.className = "acvc-update-box";
       box.innerHTML =
-        '<div class="acvc-update-title">How are you doing this week?</div>' +
+        '<div class="acvc-update-title">' +
+        (daily ? "How are you doing today?" : "How are you doing this week?") +
+        "</div>" +
+        '<div class="acvc-fb-ident' + (hasIdent ? " acvc-fb-ident-locked" : "") + '">' +
+        '  <div class="acvc-fb-ident-fields">' +
+        '    <div><label>Full name</label>' +
+        '    <input type="text" id="acvc-fb-name" placeholder="Your full name" value="' +
+        String(ident.name || "").replace(/"/g, "&quot;") + '"' +
+        (hasIdent ? " disabled" : "") + "></div>" +
+        '    <div><label>Email (from your sign-in — change it if you prefer another)</label>' +
+        '    <input type="email" id="acvc-fb-email" placeholder="you@example.com" value="' +
+        String(prefillEmail).replace(/"/g, "&quot;") + '"' +
+        (hasIdent ? " disabled" : "") + "></div>" +
+        "  </div>" +
+        (hasIdent
+          ? '<button type="button" class="acvc-fb-edit" id="acvc-fb-edit">Edit</button>'
+          : "") +
+        "</div>" +
         '<div class="acvc-fb-row">' +
+        '  <div class="acvc-fb-lightcol">' +
+        '  <label class="acvc-fb-feel">How are you feeling?</label>' +
         '  <div class="acvc-fb-stoplight">' +
         light("red", "🙁", "Rough week — I need help") +
         light("yellow", "😐", "OK week — some friction") +
         light("green", "🙂", "Good week — on track") +
-        "  </div>" +
+        "  </div></div>" +
         '  <div class="acvc-fb-notecol">' +
         '    <label>Quick note next to your pick</label>' +
         '    <textarea id="acvc-fb-note" rows="6" placeholder="One or two lines about the week…"></textarea>' +
         "  </div>" +
         "</div>" +
-        '<label>What did you get done this week?</label>' +
+        "<label>" + (daily ? "What did you get done since your last check-in?"
+                            : "What did you get done this week?") + "</label>" +
         '<textarea id="acvc-fb-activities" rows="3" placeholder="Summary of the activities you performed…"></textarea>' +
         '<label>Anything you\'re stuck on and need assistance with?</label>' +
         '<textarea id="acvc-fb-stuck" rows="3" placeholder="Blockers, questions, things you want your mentor to see…"></textarea>' +
@@ -359,13 +412,35 @@
           });
         };
       });
+      var editBtn = box.querySelector("#acvc-fb-edit");
+      if (editBtn) {
+        editBtn.onclick = function () {
+          box.querySelector("#acvc-fb-name").disabled = false;
+          box.querySelector("#acvc-fb-email").disabled = false;
+          box.querySelector(".acvc-fb-ident").classList.remove("acvc-fb-ident-locked");
+          editBtn.remove();
+          box.querySelector("#acvc-fb-name").focus();
+        };
+      }
+
       function refreshSend() {
-        var ok = picked && box.querySelector("#acvc-fb-ack").checked;
+        // Everything is required: identity, a light, the three text
+        // fields, and the acknowledgement.
+        var filled = ["acvc-fb-note", "acvc-fb-activities", "acvc-fb-stuck"]
+          .every(function (id) {
+            return box.querySelector("#" + id).value.trim().length > 0;
+          });
+        var nameOk = box.querySelector("#acvc-fb-name").value.trim().length > 0;
+        var emailV = box.querySelector("#acvc-fb-email").value.trim();
+        var emailOk = emailV.length > 2 && emailV.indexOf("@") !== -1;
+        var ok = picked && filled && nameOk && emailOk &&
+          box.querySelector("#acvc-fb-ack").checked;
         send.disabled = !ok;
         send.style.opacity = ok ? "1" : "0.45";
       }
       box.querySelector("#acvc-fb-ack").onchange = refreshSend;
       box.addEventListener("click", refreshSend);
+      box.addEventListener("input", refreshSend);
       refreshSend();
 
       send.onclick = function () {
@@ -381,11 +456,14 @@
             activities: box.querySelector("#acvc-fb-activities").value,
             stuck: box.querySelector("#acvc-fb-stuck").value,
             statusAck: box.querySelector("#acvc-fb-ack").checked,
+            name: box.querySelector("#acvc-fb-name").value,
+            email: box.querySelector("#acvc-fb-email").value,
           }),
         }).then(function (r) {
           if (r && r.status) fstat = r.status;
           ensure();
           close();
+          acvcBurstConfetti();
         }).catch(function (e) {
           box.querySelector("#acvc-fb-err").textContent =
             String((e && e.message) || e);
@@ -1081,7 +1159,8 @@
     var color = "#eab308";
     var c = useCollapsible("acvc-level-open");
     var open = c[0], toggleOpen = c[1];
-    var established = lv.level > 0;
+    var hasBadge = !!lv.badge;
+    var established = lv.level > 0;   // roadmap unlocks at level 1+
     return h("div", {
       className: "acvc-card",
       style: {
@@ -1101,14 +1180,16 @@
         h("div", { style: { flex: 1 } },
           h("div", { style: { display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" } },
             h("span", { style: { fontSize: 22, fontWeight: 800, color: color } }, "Your Level"),
-            established
+            hasBadge
               ? h("span", { style: { fontSize: 13, color: MUTED } },
                   "Level " + lv.level + " — " + (lv.badge ? lv.badge.name : ""))
               : h("span", { style: { fontSize: 13, color: MUTED } }, "Unranked")),
           h("div", { style: { fontSize: 12.5, color: established ? "#16a34a" : "#f59e0b", marginTop: 3 } },
             established
               ? "✓ Badge established — the roadmap below is unlocked."
-              : "Take the assessment to establish your builder level — the roadmap unlocks once you hold a badge.")
+              : hasBadge
+                ? "💡 Curious — the roadmap needs an idea. Reach Level 1 to unlock it; your prescription shows the way."
+                : "Take the assessment to establish your builder level — the roadmap unlocks at Level 1.")
         ),
         h("div", { style: { textAlign: "right", minWidth: 130 } },
           h("a", {
@@ -1116,7 +1197,7 @@
             onClick: function (e) { e.preventDefault(); e.stopPropagation(); window.location.assign("/level"); },
             className: "acvc-link",
             style: { color: color, fontWeight: 700 },
-          }, established ? "Your Level ↗" : "Take the assessment ↗"))
+          }, established ? "Your Level ↗" : hasBadge ? "Your prescription ↗" : "Take the assessment ↗"))
       ),
       open
         ? h("div", { style: { padding: "12px 18px", fontSize: 13, color: MUTED, lineHeight: 1.55 } },

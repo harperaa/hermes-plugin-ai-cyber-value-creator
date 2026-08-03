@@ -274,3 +274,18 @@ def test_prior_knowledge_mines_full_levels_context(home, scripted, badge):
         "level": 0, "badges": [], "history": [], "checklist": None}))
     pk = coach._prior_knowledge("create-value-icp")
     assert "law firms" not in pk and "acquisition-paths" not in pk
+
+
+def test_curious_level0_stays_gated(home, scripted, badge):
+    import json as _json
+    (badge / "state.json").write_text(_json.dumps({
+        "level": 0,
+        "badges": [{"level": 0, "name": "Curious", "emoji": "💡"}],
+        "history": [{"level": 0, "rationale": "no idea yet"}],
+        "checklist": {"targetLevel": 1, "items": [{"status": "open"}]},
+    }))
+    ps = coach.public_state()
+    assert ps["levelGate"] is True          # roadmap locked at level 0
+    assert ps["levelStatus"]["badge"]["name"] == "Curious"
+    r = coach.start("create-value-icp")
+    assert "reach Level 1" in r["error"]

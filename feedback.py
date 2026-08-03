@@ -118,6 +118,12 @@ def _roadmap_snapshot() -> dict:
         return {"roadmapDone": None, "roadmapTotal": None}
 
 
+def get_identity() -> dict:
+    ident = _load().get("identity") or {}
+    return {"name": str(ident.get("name", "")),
+            "email": str(ident.get("email", ""))}
+
+
 def status() -> dict:
     state = _load()
     last = state.get("lastSubmittedAt")
@@ -125,20 +131,40 @@ def status() -> dict:
         "configured": configured(),
         "lastSubmittedAt": last,
         "freshness": freshness(last),
+        "identity": get_identity(),
+        "loginEmail": _mentee_email(),   # prefill for the first submission
     }
 
 
 def submit(sentiment: str, note: str, activities: str, stuck: str,
-           status_ack: bool) -> dict:
+           status_ack: bool, name: str = "", email: str = "") -> dict:
     if not configured():
         return {"error": "feedback hub not configured"}
+    name = (name or "").strip()
+    email = (email or "").strip().lower()
+    if not name:
+        return {"error": "your full name is required"}
+    if not email or "@" not in email:
+        return {"error": "a valid email address is required"}
     if sentiment not in ("green", "yellow", "red"):
         return {"error": "pick how your week went (the traffic light)"}
     if not status_ack:
         return {"error": "the status acknowledgement is required"}
+    if not (note or "").strip():
+        return {"error": "the quick note is required"}
+    if not (activities or "").strip():
+        return {"error": "the activities summary is required"}
+    if not (stuck or "").strip():
+        return {"error": "the stuck/assistance field is required "
+                         "(write 'nothing' if you're unblocked)"}
+    prev_ident = get_identity()
     payload = {
-        "email": _mentee_email(),
-        "name": "",   # future: collected during onboarding
+        "email": email,
+        "name": name,
+        # tells the hub to re-key the mentee's prior records to the new email
+        "previousEmail": (prev_ident["email"]
+                          if prev_ident["email"] and prev_ident["email"] != email
+                          else ""),
         "sentiment": sentiment,
         "note": (note or "").strip()[:2000],
         "activities": (activities or "").strip()[:8000],
@@ -167,6 +193,7 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
         return {"error": f"could not reach the feedback hub: {exc}"}
 
     state = _load()
+    state["identity"] = {"name": name, "email": email}
     state["lastSubmittedAt"] = time.time()
     state.setdefault("history", []).append(
         {"at": state["lastSubmittedAt"], "sentiment": sentiment,

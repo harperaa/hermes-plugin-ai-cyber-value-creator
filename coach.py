@@ -341,6 +341,9 @@ def _convo(messages: list[dict]) -> str:
 # are import-independent; this text is stable framework content shown in the
 # roadmap's Your Level panel when both plugins are present).
 LEVEL_SUMMARIES = {
+    0: ("Curious", "Drawn to AI but not yet holding a concrete app or "
+        "service idea — or still missing the basics of what AI does. The "
+        "levels page prescribes the road to Level 1."),
     1: ("The Spark", "In love with what AI can do and with one particular "
         "idea. No go-to-market thinking, no wider problem-space view, no "
         "thesis — rolling the dice."),
@@ -447,6 +450,10 @@ def start(task_id: str) -> dict:
         return {"error": f"unknown taskId: {task_id}"}
     lv = level_status()
     if lv["installed"] and lv["level"] < 1:
+        if lv.get("badge"):
+            return {"error": "the roadmap needs an idea — reach Level 1 "
+                             "first (your prescription on the Your Level "
+                             "page shows the way)"}
         return {"error": "establish your level first — take the assessment "
                          "on the Your Level page"}
     blocker = prior_incomplete(task_id)
