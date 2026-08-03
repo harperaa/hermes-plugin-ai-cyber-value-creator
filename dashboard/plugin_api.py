@@ -245,6 +245,52 @@ def reset_progress():
     return {"ok": True}
 
 
+# ---------------------------------------------------------------------------
+# Roadmap Coach — per-step in-page interviews (host-owned LLM; no kanban)
+# ---------------------------------------------------------------------------
+
+def _coach():
+    import importlib
+    return importlib.import_module(f"{_PKG}.coach")
+
+
+def _coach_result(result: dict) -> dict:
+    if result.get("error"):
+        detail = str(result["error"])
+        code = 503 if "coach unavailable" in detail else 409
+        raise HTTPException(status_code=code, detail=detail)
+    return result
+
+
+@router.get("/coach")
+def coach_state() -> dict:
+    return _coach().public_state()
+
+
+class CoachStartBody(BaseModel):
+    taskId: str = ""
+
+
+class CoachAnswerBody(BaseModel):
+    taskId: str = ""
+    text: str = ""
+
+
+@router.post("/coach/start")
+def coach_start(body: CoachStartBody) -> dict:
+    return _coach_result(_coach().start(body.taskId))
+
+
+@router.post("/coach/answer")
+def coach_answer(body: CoachAnswerBody) -> dict:
+    return _coach_result(_coach().answer(body.taskId, body.text))
+
+
+@router.post("/coach/reset")
+def coach_reset(body: CoachStartBody) -> dict:
+    return _coach_result(_coach().reset(body.taskId))
+
+
 class ContextBody(BaseModel):
     # Free-form patch: {icp, problems, solutions, offer, elevatorPitch}
     model_config = {"extra": "allow"}

@@ -403,9 +403,14 @@ def find_step_for_kanban_task(kanban_task_id: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def roadmap_data() -> dict:
+    """Roadmap page payload. Step status is coach-driven (coach.py) — the
+    old kanban reconciliation is deliberately NOT run here anymore: stale
+    task links from the retired + Task flow must never override the coach's
+    statuses. (sync_progress_from_kanban stays for the kanban hooks.)"""
     from .methodology import ALL_PHASES
 
-    progress, links = sync_progress_from_kanban()
+    progress = get_progress()
+    links: dict = {}
     phases = []
     done_total = 0
     for phase in ALL_PHASES:

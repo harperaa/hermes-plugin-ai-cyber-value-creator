@@ -243,7 +243,62 @@ def apply_company_context(patch: dict) -> dict:
         state["context"] = c
         save_state(state)
         write_shared_context_file(c)
+        try:
+            sync_user_profile(c)
+        except Exception:
+            pass  # ambient mirror must never break a context write
     return c
+
+
+# ---------------------------------------------------------------------------
+# Ambient user profile — hermes injects $HERMES_HOME/memories/USER.md into
+# EVERY session's system prompt, so a compact company-context summary there
+# makes the whole system aware of who the mentee serves and what they sell.
+# One managed entry, rewritten on every context change; other entries (e.g.
+# the Value Creator Level one) are left untouched.
+# ---------------------------------------------------------------------------
+
+_PROFILE_PREFIX = "Company Context (auto-updated by the ai-cyber-value-creator plugin):"
+_PROFILE_DELIM = "\n\u00a7\n"  # tools/memory_tool.ENTRY_DELIMITER
+
+
+def _first_line(v, limit: int = 110) -> str:
+    if not isinstance(v, str) or not v.strip():
+        return ""
+    return v.strip().splitlines()[0][:limit]
+
+
+def sync_user_profile(c: dict | None = None) -> None:
+    c = c if isinstance(c, dict) else merged_context()
+    lines = [_PROFILE_PREFIX]
+    pitch = _first_line(c.get(ELEVATOR_PITCH_KEY), 160)
+    if pitch:
+        lines.append(f"Elevator pitch: {pitch}")
+    icp = _first_line(c.get("icp"))
+    if icp:
+        lines.append(f"ICP: {icp}")
+    offer = _first_line(c.get("offer"))
+    if offer:
+        lines.append(f"Active offer: {offer}")
+    if len(lines) == 1:
+        lines.append("Not yet defined — the Create Value foundation on the "
+                     "Roadmap page discovers it.")
+    lines.append("Full detail: the get_company_context tool or "
+                 "company-context.md in the plugin data dir.")
+    entry = "\n".join(lines)[:600]
+
+    path = get_hermes_home() / "memories" / "USER.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        raw = ""
+    entries = [e.strip() for e in raw.split(_PROFILE_DELIM) if e.strip()]
+    entries = [e for e in entries if not e.startswith(_PROFILE_PREFIX)]
+    entries.append(entry)
+    tmp = path.with_suffix(".acvc-tmp")
+    tmp.write_text(_PROFILE_DELIM.join(entries) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def merged_context() -> dict:

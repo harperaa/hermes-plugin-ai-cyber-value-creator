@@ -372,54 +372,39 @@
   }
 
   // -------------------------------------------------------------------------
-  // Per-step task control: start a kanban task for the step, or link the
-  // existing one (kanban card + the worker session's chat thread).
+  // Per-step coach control: the in-page working session (host-owned LLM via
+  // /coach endpoints) replaces kanban tasks + worker chat threads. Expand a
+  // step to see its guidance and work it in a scrollable chat right here.
   // -------------------------------------------------------------------------
   function TaskControl(props) {
     var task = props.task;
-    var busy = props.taskActions.busyTaskId === task.id;
-    // Two-click confirm for reset (native confirm() would block automation).
+    var A = props.taskActions;
+    var cs = (A.coach && A.coach[task.id]) || { status: "open", messages: [] };
+    var busy = A.busyTaskId === task.id;
+    var expanded = A.expandedTask === task.id;
     var armedSt = useState(false); var resetArmed = armedSt[0], setResetArmed = armedSt[1];
-    if (task.kanban && task.kanban.taskId) {
-      var els = [];
-      var chatHref = task.kanban.sessionId
-        ? "/chat?resume=" + encodeURIComponent(task.kanban.sessionId)
-        : null;
-      if (task.awaitingAnswer && task.status !== "done") {
-        // Q&A lives in the chat thread only — the board's job is to send
-        // the user there the moment it's their turn. Until a worker session
-        // exists (e.g. no provider connected yet), fall back to the task
-        // drawer so the chip always lands somewhere useful.
-        var answerHref = chatHref || ("/kanban#task=" + encodeURIComponent(task.kanban.taskId));
-        els.push(h("a", {
-          key: "answer",
-          href: answerHref,
-          onClick: function (e) { e.preventDefault(); window.location.assign(answerHref); },
-          title: "The agent asked you a question — open the chat thread to answer",
-          className: "acvc-answer-chip",
-        }, "❓ your turn — answer in chat ↗"));
-      } else if (task.status !== "done") {
-        els.push(h("span", { key: "spin", className: "acvc-working", title: "The agent is working this step — stand by" },
-          h("span", { className: "acvc-spinner" }),
-          task.kanban.status === "ready" || task.kanban.status === "todo" ? "queued…" : "agent working…"));
-      }
-      if (chatHref) {
-        els.push(h("a", {
-          key: "chat",
-          href: chatHref,
-          onClick: function (e) { e.preventDefault(); window.location.assign(chatHref); },
-          title: "Open this step's conversation thread",
-          className: "acvc-link",
-        }, "chat ↗"));
-      }
-      var kbHref = "/kanban#task=" + encodeURIComponent(task.kanban.taskId);
-      els.push(h("a", {
-        key: "kb",
-        href: kbHref,
-        onClick: function (e) { e.preventDefault(); window.location.assign(kbHref); },
-        title: "Task " + task.kanban.taskId + " (" + (task.kanban.status || "open") + ") on the kanban board",
-        className: "acvc-link",
-      }, "task ↗"));
+    var els = [];
+
+    var label;
+    if (cs.status === "complete") label = expanded ? "hide ▴" : "review ▾";
+    else if (cs.status === "active") label = expanded ? "hide ▴" : "continue ▾";
+    else label = expanded ? "hide ▴" : "▸ Coach";
+    els.push(h("button", {
+      key: "coach",
+      onClick: function () {
+        if (busy) return;
+        if (!expanded && cs.status === "open") A.onStart(task.id);
+        A.onToggle(task.id);
+      },
+      disabled: busy,
+      title: cs.status === "open"
+        ? "Work this step with the Coach — a live session right here on the page"
+        : "Open this step's working session",
+      className: "acvc-task-btn",
+      style: { cursor: busy ? "wait" : "pointer", color: busy ? MUTED : "#6366f1", borderColor: busy ? BORDER : "#4f46e5" },
+    }, busy && cs.status === "open" ? "Starting…" : label));
+
+    if (cs.status !== "open" || (cs.messages && cs.messages.length)) {
       els.push(h("a", {
         key: "reset",
         href: "#",
@@ -432,23 +417,82 @@
             return;
           }
           setResetArmed(false);
-          props.taskActions.onResetTask(task.id);
+          A.onReset(task.id);
         },
         title: resetArmed
-          ? "Click again to confirm: archives this step's task and clears its captured answers — the step returns to + Task"
-          : "Reset this step — clears all its interview state; start again with + Task",
+          ? "Click again to confirm: clears this step's conversation and captured answers — fresh start"
+          : "Reset this step — clears its conversation and captured answers",
         className: "acvc-link acvc-reset-link",
         style: resetArmed ? { color: "#f59e0b", fontWeight: 700 } : { color: MUTED },
-      }, busy ? "resetting…" : (resetArmed ? "confirm reset?" : "reset ↺")));
-      return h("span", { style: { display: "flex", gap: 8 } }, els);
+      }, busy ? "…" : (resetArmed ? "confirm reset?" : "reset ↺")));
     }
-    return h("button", {
-      onClick: function () { props.taskActions.onCreateTask(task.id); },
-      disabled: busy,
-      title: "Create a task for this step — it runs as a hermes session via the kanban dispatcher",
-      className: "acvc-task-btn",
-      style: { cursor: busy ? "wait" : "pointer", color: busy ? MUTED : "#6366f1", borderColor: busy ? BORDER : "#4f46e5" },
-    }, busy ? "Creating…" : "+ Task");
+    return h("span", { style: { display: "flex", gap: 8, alignItems: "center" } }, els);
+  }
+
+  // The expandable working panel under a step row: guidance bullets + the
+  // persisted, scrollable coach conversation.
+  function CoachPanel(props) {
+    var task = props.task;
+    var A = props.taskActions;
+    var cs = (A.coach && A.coach[task.id]) || { status: "open", messages: [], guidance: [] };
+    var busy = A.busyTaskId === task.id;
+    var draftSt = useState("");
+    var draft = draftSt[0], setDraft = draftSt[1];
+    var endRef = useRef(null);
+    useEffect(function () {
+      if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, [(cs.messages || []).length, busy]);
+
+    function send() {
+      var t = draft.trim();
+      if (!t || busy) return;
+      setDraft("");
+      A.onAnswer(task.id, t);
+    }
+
+    return h("div", { className: "acvc-coach-panel", style: { borderColor: hexToRgba(props.accent || "#6366f1", 0.35) } },
+      cs.guidance && cs.guidance.length
+        ? h("div", { className: "acvc-coach-guidance" },
+            h("div", { className: "acvc-coach-guidance-label" }, "📋 How this step works"),
+            cs.guidance.map(function (g, i) {
+              return h("div", { key: i, className: "acvc-coach-guidance-row" }, "• " + g);
+            }))
+        : null,
+      cs.messages && cs.messages.length
+        ? h("div", { className: "acvc-coach-log" },
+            cs.messages.map(function (m, i) {
+              return h("div", {
+                key: i,
+                className: "acvc-coach-msg " + (m.role === "coach" ? "acvc-coach-msg-coach" : "acvc-coach-msg-user"),
+              }, m.text);
+            }),
+            busy ? h("div", { className: "acvc-coach-msg acvc-coach-msg-coach acvc-coach-thinking" },
+              h("span", null, "●"), h("span", null, "●"), h("span", null, "●")) : null,
+            h("div", { ref: endRef }))
+        : (busy ? h("div", { className: "acvc-coach-log" },
+            h("div", { className: "acvc-coach-msg acvc-coach-msg-coach acvc-coach-thinking" },
+              h("span", null, "●"), h("span", null, "●"), h("span", null, "●"))) : null),
+      cs.status === "complete"
+        ? h("div", { className: "acvc-coach-done" },
+            "✅ Complete", cs.summary ? " — " + cs.summary : "")
+        : h("div", { className: "acvc-coach-input" },
+            h("textarea", {
+              className: "acvc-coach-textarea",
+              rows: 2,
+              placeholder: "Work the step — answer the Coach…",
+              value: draft,
+              disabled: busy || cs.status === "open",
+              onChange: function (e) { setDraft(e.target.value); },
+              onKeyDown: function (e) {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+              },
+            }),
+            h("button", {
+              className: "acvc-task-btn",
+              onClick: send,
+              disabled: busy || !draft.trim() || cs.status === "open",
+              style: { color: "#6366f1", borderColor: "#4f46e5" },
+            }, busy ? "…" : "Send")));
   }
 
   // -------------------------------------------------------------------------
@@ -493,31 +537,14 @@
         )
       ),
       h("span", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 } },
-        h("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
-          (function () {
-            // Interview position reported by the session's ask_user_question
-            // calls — the bar stays up for the whole interview.
-            var iv = task.kanban && task.kanban.interview;
-            if (!iv || !iv.n || !iv.total || task.status === "done") return null;
-            var waiting = !!task.awaitingAnswer;
-            var answered = waiting ? iv.n - 1 : Math.min(iv.n, iv.total);
-            var pct = Math.min(100, Math.round((answered / iv.total) * 100));
-            return h("span", {
-              className: "acvc-qprogress",
-              title: waiting
-                ? "Interview progress: question " + iv.n + " of " + iv.total + " — answer in chat"
-                : "Interview progress: " + answered + " of " + iv.total + " answered",
-            },
-              h("span", { className: "acvc-qprogress-label" },
-                waiting ? "Q" + iv.n + "/" + iv.total : answered + "/" + iv.total),
-              h("span", { style: { width: 64, display: "inline-block" } },
-                h(ProgressBar, { pct: pct, color: "#f59e0b" })));
-          })(),
-          h(StatusBadge, { status: task.status, color: props.accent })),
+        h(StatusBadge, { status: task.status, color: props.accent }),
         props.badge ? h("span", { style: { fontSize: 10.5, color: MUTED } }, props.badge) : null,
         h(TaskControl, { task: task, taskActions: props.taskActions })
       )
-    ));
+    ),
+    props.taskActions && props.taskActions.expandedTask === task.id
+      ? h(CoachPanel, { task: task, taskActions: props.taskActions, accent: props.accent })
+      : null);
   }
 
   // -------------------------------------------------------------------------
@@ -1242,11 +1269,18 @@
     var busyTask = busyTaskSt[0], setBusyTask = busyTaskSt[1];
     var busyCreateSt = useState(null);
     var busyTaskCreate = busyCreateSt[0], setBusyTaskCreate = busyCreateSt[1];
+    var coachSt = useState({});
+    var coach = coachSt[0], setCoach = coachSt[1];
+    var expandedSt = useState(null);
+    var expandedTask = expandedSt[0], setExpandedTask = expandedSt[1];
     var viewSt = useState("laps");
     var view = viewSt[0], setView = viewSt[1];
     var pendingPhaseRef = useRef(null);
 
     var refresh = useCallback(function () {
+      api("/coach")
+        .then(function (d) { if (d && d.steps) setCoach(d.steps); })
+        .catch(function () { /* coach state is additive */ });
       return api("/roadmap")
         .then(function (d) { setData(d); setError(null); })
         .catch(function (e) { setError(String((e && e.message) || e)); });
@@ -1282,20 +1316,31 @@
         .finally(function () { setBusyTask(null); });
     }
 
-    function handleCreateTask(taskId) {
+    function coachStart(taskId) {
       setBusyTaskCreate(taskId);
-      postJSON("/start-step", { taskId: taskId })
-        .catch(function (e) { window.alert(String((e && e.message) || e)); })
+      postJSON("/coach/start", { taskId: taskId })
+        .catch(function (e) { setError(String((e && e.message) || e)); })
         .then(refresh)
         .finally(function () { setBusyTaskCreate(null); });
     }
 
-    function handleResetTask(taskId) {
+    function coachAnswer(taskId, text) {
       setBusyTaskCreate(taskId);
-      postJSON("/reset-step", { taskId: taskId })
-        .catch(function (e) { window.alert(String((e && e.message) || e)); })
+      postJSON("/coach/answer", { taskId: taskId, text: text })
+        .catch(function (e) { setError(String((e && e.message) || e)); })
         .then(refresh)
         .finally(function () { setBusyTaskCreate(null); });
+    }
+
+    function coachReset(taskId) {
+      setBusyTaskCreate(taskId);
+      postJSON("/coach/reset", { taskId: taskId })
+        .catch(function (e) { setError(String((e && e.message) || e)); })
+        .then(refresh)
+        .finally(function () {
+          setBusyTaskCreate(null);
+          setExpandedTask(null);   // collapse the panel — fresh start
+        });
     }
 
     function handleReset() {
@@ -1327,7 +1372,18 @@
     var taskById = {};
     phases.forEach(function (p) { p.tasks.forEach(function (t) { taskById[t.id] = t; }); });
 
-    var taskActions = { busyTaskId: busyTaskCreate, onCreateTask: handleCreateTask, onResetTask: handleResetTask, refresh: refresh };
+    var taskActions = {
+      busyTaskId: busyTaskCreate,
+      coach: coach,
+      expandedTask: expandedTask,
+      onToggle: function (taskId) {
+        setExpandedTask(expandedTask === taskId ? null : taskId);
+      },
+      onStart: coachStart,
+      onAnswer: coachAnswer,
+      onReset: coachReset,
+      refresh: refresh,
+    };
 
     return h("div", { className: "acvc-page", style: { background: PAGE_BG, minHeight: "100%", color: TEXT } },
       h("div", { style: { padding: "28px 24px 48px", maxWidth: 1100, margin: "0 auto" } },
@@ -1409,7 +1465,7 @@
             justifyContent: "space-between", color: MUTED, fontSize: 12,
           },
         },
-          h("span", null, "Tip: click a sub-task to cycle To-Do → In-Progress → Done. \"+ Task\" runs the step as a hermes session (needs the gateway running)."),
+          h("span", null, "Tip: expand any step with \"▸ Coach\" — guidance plus a live working session, right here. Clicking a sub-task still cycles To-Do → In-Progress → Done manually."),
           h("button", { onClick: handleReset, className: "acvc-btn-ghost" }, "Reset progress")),
 
         data.build
