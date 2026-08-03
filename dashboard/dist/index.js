@@ -385,7 +385,8 @@
         '<textarea id="acvc-fb-stuck" rows="2" placeholder="Blockers, questions, things you want your mentor to see — or leave blank…"></textarea>' +
         '<label class="acvc-fb-ack"><input type="checkbox" id="acvc-fb-ack"> ' +
         "I agree that my current level and roadmap completion status will be " +
-        "submitted as part of this feedback. <b>(required)</b></label>" +
+        "submitted as part of this feedback to Dr. Allen Harper, " +
+        "AI Cyber Value Creator. <b>(required)</b></label>" +
         '<div class="acvc-fb-err" id="acvc-fb-err"></div>';
 
       var row = document.createElement("div");
