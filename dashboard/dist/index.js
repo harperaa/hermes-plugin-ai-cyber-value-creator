@@ -30,11 +30,20 @@
     // Planned tools per phase (two-word names from the coverage plan); each
     // renders as a stacked menu item with a right-aligned "soon" pill until
     // its plugin ships (then the real link replaces it here).
+    // Tools listed in roadmap-step order per pillar (A1→A3, N1→N3, C1→C3,
+    // D1→D3). Offer Forge is Foundation F4 but lives at the top of CONVERT
+    // as its commercial front door. NURTURE's pre-stack renders above the
+    // real YouTube Insights link (N2); its items stack below it.
     var PHASES = [
-      ["attract", "ATTRACT", ["Shorts Lab", "Referral Ledger", "Tribe Builder"]],
-      ["nurture", "NURTURE", ["Content Lab", "Funnel Automations", "Community Engine"]],
-      ["convert", "CONVERT", ["Offer Forge", "Campaign Scheduler", "Sales Room", "Waitlist Gate"]],
-      ["deliver", "DELIVER", ["Testimonial Collector", "Journey Choreographer", "Delivery Kit"]],
+      { id: "attract", label: "ATTRACT",
+        items: ["Referral Ledger", "Tribe Builder", "Shorts Lab"] },
+      { id: "nurture", label: "NURTURE",
+        pre: ["Community Engine"],
+        items: ["Content Lab", "Funnel Automations"] },
+      { id: "convert", label: "CONVERT",
+        items: ["Offer Forge", "Sales Room", "Waitlist Gate", "Campaign Scheduler"] },
+      { id: "deliver", label: "DELIVER",
+        items: ["Journey Choreographer", "Delivery Kit", "Testimonial Collector"] },
     ];
     function ensure() {
       try {
@@ -44,9 +53,29 @@
         var ul = G.querySelector("ul");
         if (!ul) return;
         PHASES.forEach(function (p) {
-          var id = p[0], label = p[1], tools = p[2];
+          var id = p.id, label = p.label;
           var open = true;
           try { open = localStorage.getItem("acvc-pg-" + id) !== "0"; } catch (e) {}
+
+          function itemStack(domId, tools) {
+            var li = document.createElement("li");
+            li.id = domId;
+            li.className = "acvc-pg-holder acvc-pg-items" + (open ? " acvc-pg-open" : "");
+            tools.forEach(function (name) {
+              var row = document.createElement("div");
+              row.className = "acvc-pg-item";
+              row.title = name + " — planned, not yet available";
+              var nm = document.createElement("span");
+              nm.textContent = name;
+              var tag = document.createElement("span");
+              tag.className = "acvc-pg-soon";
+              tag.textContent = "soon";
+              row.appendChild(nm);
+              row.appendChild(tag);
+              li.appendChild(row);
+            });
+            return li;
+          }
 
           var headLi = document.createElement("li");
           headLi.id = "acvc-pg-" + id + "-head";
@@ -58,32 +87,22 @@
           head.innerHTML = '<span class="acvc-pg-chev">▶</span>' + label;
           headLi.appendChild(head);
 
-          var itemsLi = document.createElement("li");
-          itemsLi.id = "acvc-pg-" + id + "-items";
-          itemsLi.className = "acvc-pg-holder acvc-pg-items" + (open ? " acvc-pg-open" : "");
-          tools.forEach(function (name) {
-            var row = document.createElement("div");
-            row.className = "acvc-pg-item";
-            row.title = name + " — planned, not yet available";
-            var nm = document.createElement("span");
-            nm.textContent = name;
-            var tag = document.createElement("span");
-            tag.className = "acvc-pg-soon";
-            tag.textContent = "soon";
-            row.appendChild(nm);
-            row.appendChild(tag);
-            itemsLi.appendChild(row);
-          });
+          var stacks = [];
+          if (p.pre && p.pre.length)
+            stacks.push(itemStack("acvc-pg-" + id + "-pre", p.pre));
+          stacks.push(itemStack("acvc-pg-" + id + "-items", p.items));
 
           head.onclick = function () {
             var nowOpen = !headLi.classList.contains("acvc-pg-open");
             headLi.classList.toggle("acvc-pg-open", nowOpen);
-            itemsLi.classList.toggle("acvc-pg-open", nowOpen);
+            stacks.forEach(function (li) {
+              li.classList.toggle("acvc-pg-open", nowOpen);
+            });
             try { localStorage.setItem("acvc-pg-" + id, nowOpen ? "1" : "0"); } catch (e) {}
           };
 
           ul.appendChild(headLi);
-          ul.appendChild(itemsLi);
+          stacks.forEach(function (li) { ul.appendChild(li); });
         });
       } catch (e) { /* cosmetic */ }
     }
@@ -132,11 +151,12 @@
         G + ' li:has(> a[href="/level"]){order:-19;}' +
         G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
         // NURTURE holds YouTube Insights; its soon-items stack below the link
-        G + ' li:has(> a[href="/youtube"]){order:-9;margin-left:14px;}' +
-        '#acvc-pg-attract-head{order:-12;}#acvc-pg-attract-items{order:-11;}' +
-        '#acvc-pg-nurture-head{order:-10;}#acvc-pg-nurture-items{order:-8;}' +
-        '#acvc-pg-convert-head{order:-6;}#acvc-pg-convert-items{order:-5;}' +
-        '#acvc-pg-deliver-head{order:-4;}#acvc-pg-deliver-items{order:-3;}' +
+        G + ' li:has(> a[href="/youtube"]){order:-10;margin-left:14px;}' +
+        '#acvc-pg-attract-head{order:-14;}#acvc-pg-attract-items{order:-13;}' +
+        '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
+        '#acvc-pg-nurture-items{order:-9;}' +
+        '#acvc-pg-convert-head{order:-7;}#acvc-pg-convert-items{order:-6;}' +
+        '#acvc-pg-deliver-head{order:-5;}#acvc-pg-deliver-items{order:-4;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
         // collapsing NURTURE hides its nested real link (pure CSS via :has)
         G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
