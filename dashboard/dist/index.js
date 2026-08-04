@@ -491,7 +491,7 @@
   // survives SPA navigation; honors the shared FX toggle (vcl-effects-off).
   // -------------------------------------------------------------------------
   (function ambientBackground() {
-    var ROUTES = { "/roadmap": 1, "/youtube": 1 };
+    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1 };
     var canvas = null, tintEl = null, raf = 0, stars = null;
     var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
     var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
