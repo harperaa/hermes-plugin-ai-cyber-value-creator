@@ -41,7 +41,7 @@
         pre: ["Community Engine"],
         items: ["Funnel Automations"] },
       { id: "convert", label: "CONVERT",
-        items: ["Offer Forge", "Sales Room", "Waitlist Gate", "Campaign Scheduler"] },
+        items: ["Offer Forge", "Waitlist Gate", "Campaign Scheduler"] },
       { id: "deliver", label: "DELIVER",
         items: ["Journey Choreographer", "Delivery Kit", "Testimonial Collector"] },
     ];
