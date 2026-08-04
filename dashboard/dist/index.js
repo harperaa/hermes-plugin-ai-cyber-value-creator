@@ -172,11 +172,11 @@
         '.acvc-pg-open .acvc-pg-chev{transform:rotate(90deg);}' +
         '.acvc-pg-item{display:flex;align-items:center;justify-content:space-between;' +
         'gap:8px;padding:3px 20px 3px 33px;font-size:12.5px;' +
-        'color:var(--color-muted-foreground,#9aa0b4);cursor:default;}' +
+        'color:var(--color-muted-foreground,#9aa0b4);cursor:default;opacity:0.5;}' +
         '.acvc-pg-item span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
         '.acvc-pg-soon{flex-shrink:0;font-size:9px;letter-spacing:0.08em;' +
         'text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:999px;' +
-        'border:1px solid color-mix(in srgb, currentColor 35%, transparent);opacity:0.8;}' +
+        'border:1px solid color-mix(in srgb, currentColor 35%, transparent);}' +
         G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
