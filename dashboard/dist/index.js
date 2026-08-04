@@ -1874,6 +1874,13 @@
 
     if (!status || (status.allDone && true) || dismissed) return null;
 
+    var GS_LINK = {
+      color: "var(--color-primary, #14b8a6)",
+      textDecoration: "underline",
+      textUnderlineOffset: 3,
+      fontWeight: 700,
+    };
+
     function StepRow(props) {
       var done = props.done;
       return h("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0" } },
@@ -1907,24 +1914,24 @@
         "A few quick connections and your AI business system is fully armed."),
       h(StepRow, { num: "1", done: !!(status.llmConnected || status.grokConnected), title: "Connect an AI model provider (powers your agent)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
-          "Open the ", h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
-          " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use — that's it: a sensible default model for that provider is selected automatically. (Optional: change it anytime on the ",
-          h("a", { href: "/models", style: { color: "var(--color-primary, #14b8a6)" } }, "Models page"),
-          ".)")),
+          "Open the ", h("a", { href: "/env", style: GS_LINK }, "Keys page"),
+          " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use. Then open the ",
+          h("a", { href: "/models", style: GS_LINK }, "Models page"),
+          " and select your provider (LLM) and its model — two clicks, and your agent is live. (xAI users: pick Grok 4.5.)")),
       h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for YouTube Insights)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Only needed if you want competitor YouTube intelligence. Create a key at ",
-          h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "transcriptapi.com"),
+          h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: GS_LINK }, "transcriptapi.com"),
           ", then set TRANSCRIPT_API_KEY on the ",
-          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          h("a", { href: "/env", style: GS_LINK }, "Keys page"),
           " — it's waiting for you under Custom Keys.")),
       h(StepRow, { num: "3", done: !!status.imageGenReady, title: "Enable image generation (thumbnails & beat visuals)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Already covered if you connected xAI Grok in step 1 — images use Grok automatically. ",
           "Using a different AI provider (Claude, OpenAI, …)? Create a free Google Gemini key at ",
-          h("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noreferrer", style: { color: "var(--color-primary, #14b8a6)" } }, "aistudio.google.com/apikey"),
+          h("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noreferrer", style: GS_LINK }, "aistudio.google.com/apikey"),
           " and set GEMINI_API_KEY on the ",
-          h("a", { href: "/env", style: { color: "var(--color-primary, #14b8a6)" } }, "Keys page"),
+          h("a", { href: "/env", style: GS_LINK }, "Keys page"),
           " under Custom Keys — it's only used when xAI isn't connected.")));
   }
 
