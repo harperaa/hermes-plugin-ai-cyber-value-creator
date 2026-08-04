@@ -27,45 +27,63 @@
   // appended children — same self-healing pattern as the header pills).
   // -------------------------------------------------------------------------
   (function phaseGroups() {
+    // Planned tools per phase (two-word names from the coverage plan); each
+    // renders as a stacked menu item with a right-aligned "soon" pill until
+    // its plugin ships (then the real link replaces it here).
     var PHASES = [
-      ["attract", "ATTRACT", "coming soon"],   // Short Form Lab lands here
-      ["nurture", "NURTURE", ""],              // holds YouTube Insights
-      ["convert", "CONVERT", "coming soon"],
-      ["deliver", "DELIVER", "coming soon"],
+      ["attract", "ATTRACT", ["Shorts Lab", "Referral Ledger", "Tribe Builder"]],
+      ["nurture", "NURTURE", ["Content Lab", "Funnel Automations", "Community Engine"]],
+      ["convert", "CONVERT", ["Offer Forge", "Campaign Scheduler", "Sales Room", "Waitlist Gate"]],
+      ["deliver", "DELIVER", ["Testimonial Collector", "Journey Choreographer", "Delivery Kit"]],
     ];
     function ensure() {
       try {
-        if (document.getElementById("acvc-pg-attract")) return;
+        if (document.getElementById("acvc-pg-attract-head")) return;
         var G = document.querySelector('div[aria-labelledby="hermes-sidebar-plugin-nav-heading"]');
         if (!G) return;
         var ul = G.querySelector("ul");
         if (!ul) return;
         PHASES.forEach(function (p) {
-          var id = p[0], label = p[1], placeholder = p[2];
-          var holder = document.createElement("li");
-          holder.id = "acvc-pg-" + id;
-          holder.className = "acvc-pg-holder";
+          var id = p[0], label = p[1], tools = p[2];
           var open = true;
           try { open = localStorage.getItem("acvc-pg-" + id) !== "0"; } catch (e) {}
-          if (open) holder.classList.add("acvc-pg-open");
+
+          var headLi = document.createElement("li");
+          headLi.id = "acvc-pg-" + id + "-head";
+          headLi.className = "acvc-pg-holder" + (open ? " acvc-pg-open" : "");
           var head = document.createElement("button");
           head.type = "button";
           head.className = "acvc-pg-head";
           head.title = "Flywheel phase";
           head.innerHTML = '<span class="acvc-pg-chev">▶</span>' + label;
+          headLi.appendChild(head);
+
+          var itemsLi = document.createElement("li");
+          itemsLi.id = "acvc-pg-" + id + "-items";
+          itemsLi.className = "acvc-pg-holder acvc-pg-items" + (open ? " acvc-pg-open" : "");
+          tools.forEach(function (name) {
+            var row = document.createElement("div");
+            row.className = "acvc-pg-item";
+            row.title = name + " — planned, not yet available";
+            var nm = document.createElement("span");
+            nm.textContent = name;
+            var tag = document.createElement("span");
+            tag.className = "acvc-pg-soon";
+            tag.textContent = "soon";
+            row.appendChild(nm);
+            row.appendChild(tag);
+            itemsLi.appendChild(row);
+          });
+
           head.onclick = function () {
-            var nowOpen = !holder.classList.contains("acvc-pg-open");
-            holder.classList.toggle("acvc-pg-open", nowOpen);
+            var nowOpen = !headLi.classList.contains("acvc-pg-open");
+            headLi.classList.toggle("acvc-pg-open", nowOpen);
+            itemsLi.classList.toggle("acvc-pg-open", nowOpen);
             try { localStorage.setItem("acvc-pg-" + id, nowOpen ? "1" : "0"); } catch (e) {}
           };
-          holder.appendChild(head);
-          if (placeholder) {
-            var body = document.createElement("div");
-            body.className = "acvc-pg-body";
-            body.textContent = placeholder;
-            holder.appendChild(body);
-          }
-          ul.appendChild(holder);
+
+          ul.appendChild(headLi);
+          ul.appendChild(itemsLi);
         });
       } catch (e) { /* cosmetic */ }
     }
@@ -110,16 +128,20 @@
         '#hermes-sidebar-plugin-nav-heading{display:none;}' +
         G + ' > ul{display:flex;flex-direction:column;}' +
         G + ' li{order:1;}' +
-        G + ' li:has(> a[href="/brief"]){order:-8;}' +
-        G + ' li:has(> a[href="/level"]){order:-7;}' +
-        G + ' li:has(> a[href="/roadmap"]){order:-6;}' +
-        // NURTURE group holds YouTube Insights (long-form content engine)
-        G + ' li:has(> a[href="/youtube"]){order:-4;margin-left:14px;}' +
-        '#acvc-pg-attract{order:-6;}#acvc-pg-nurture{order:-5;}' +
-        '#acvc-pg-convert{order:-3;}#acvc-pg-deliver{order:-2;}' +
+        G + ' li:has(> a[href="/brief"]){order:-20;}' +
+        G + ' li:has(> a[href="/level"]){order:-19;}' +
+        G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
+        // NURTURE holds YouTube Insights; its soon-items stack below the link
+        G + ' li:has(> a[href="/youtube"]){order:-9;margin-left:14px;}' +
+        '#acvc-pg-attract-head{order:-12;}#acvc-pg-attract-items{order:-11;}' +
+        '#acvc-pg-nurture-head{order:-10;}#acvc-pg-nurture-items{order:-8;}' +
+        '#acvc-pg-convert-head{order:-6;}#acvc-pg-convert-items{order:-5;}' +
+        '#acvc-pg-deliver-head{order:-4;}#acvc-pg-deliver-items{order:-3;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
-        // collapsing ATTRACT hides its nested link (pure CSS via :has)
-        G + ':has(#acvc-pg-nurture:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
+        // collapsing NURTURE hides its nested real link (pure CSS via :has)
+        G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
+        '.acvc-pg-items{display:none;}' +
+        '.acvc-pg-items.acvc-pg-open{display:block;}' +
         G + ':has(> span[class~="lg:hidden"]) .acvc-pg-holder{display:none;}' +
         '.acvc-pg-head{display:flex;align-items:center;gap:6px;width:100%;' +
         'background:none;border:none;cursor:pointer;text-align:left;' +
@@ -128,9 +150,13 @@
         '.acvc-pg-head:hover{color:currentColor;}' +
         '.acvc-pg-chev{display:inline-block;font-size:9px;transition:transform 0.12s ease;}' +
         '.acvc-pg-open .acvc-pg-chev{transform:rotate(90deg);}' +
-        '.acvc-pg-body{display:none;padding:2px 20px 4px 33px;font-size:12px;' +
-        'font-style:italic;color:var(--color-muted-foreground,#9aa0b4);opacity:0.75;}' +
-        '.acvc-pg-open .acvc-pg-body{display:block;}' +
+        '.acvc-pg-item{display:flex;align-items:center;justify-content:space-between;' +
+        'gap:8px;padding:3px 20px 3px 33px;font-size:12.5px;' +
+        'color:var(--color-muted-foreground,#9aa0b4);cursor:default;}' +
+        '.acvc-pg-item span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+        '.acvc-pg-soon{flex-shrink:0;font-size:9px;letter-spacing:0.08em;' +
+        'text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:999px;' +
+        'border:1px solid color-mix(in srgb, currentColor 35%, transparent);opacity:0.8;}' +
         G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
