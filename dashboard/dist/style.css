@@ -545,7 +545,7 @@
   width: 100vw; height: 100vh;
 }
 /* page content stacks above the ambient layers */
-.acvc-page, .yti-page, .yti-page-narrow, .db-page { position: relative; z-index: 1; }
+.acvc-page, .yti-page, .yti-page-narrow, .db-page, .dk-page { position: relative; z-index: 1; }
 
 @keyframes acvc-update-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(52, 211, 153, 0.35); }

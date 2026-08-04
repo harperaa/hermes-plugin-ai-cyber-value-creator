@@ -43,7 +43,8 @@
       { id: "convert", label: "CONVERT",
         items: ["Sales Forge", "Waitlist Gate", "Campaign Scheduler"] },
       { id: "deliver", label: "DELIVER",
-        items: ["Journey Choreographer", "Delivery Kit", "Testimonial Collector"] },
+        pre: ["Journey Choreographer"],
+        items: ["Testimonial Collector"] },
     ];
     function ensure() {
       try {
@@ -156,7 +157,10 @@
         '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
         '#acvc-pg-nurture-items{order:-9;}' +
         '#acvc-pg-convert-head{order:-7;}#acvc-pg-convert-items{order:-6;}' +
-        '#acvc-pg-deliver-head{order:-5;}#acvc-pg-deliver-items{order:-4;}' +
+        '#acvc-pg-deliver-head{order:-5;}#acvc-pg-deliver-pre{order:-4;}' +
+        G + ' li:has(> a[href="/delivery"]){order:-3;margin-left:14px;}' +
+        '#acvc-pg-deliver-items{order:-2;}' +
+        G + ':has(#acvc-pg-deliver-head:not(.acvc-pg-open)) li:has(> a[href="/delivery"]){display:none;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
         // collapsing NURTURE hides its nested real link (pure CSS via :has)
         G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
@@ -611,7 +615,7 @@
   // survives SPA navigation; honors the shared FX toggle (vcl-effects-off).
   // -------------------------------------------------------------------------
   (function ambientBackground() {
-    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1 };
+    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1, "/delivery": 1 };
     var canvas = null, tintEl = null, raf = 0, stars = null;
     var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
     var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
