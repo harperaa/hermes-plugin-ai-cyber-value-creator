@@ -18,6 +18,61 @@
   var SDK = window.__HERMES_PLUGIN_SDK__;
   if (!SDK || !window.__HERMES_PLUGINS__) return;
 
+  // -------------------------------------------------------------------------
+  // Flywheel phase groups — collapsible ATTRACT/NURTURE/CONVERT/DELIVER
+  // section headers at the bottom of the branded sidebar block. YouTube
+  // Insights nests under ATTRACT (pure CSS ordering + :has, no React DOM
+  // moves); empty phases show a "coming soon" placeholder until their
+  // plugins ship. Injected with an ensure-loop (React re-renders can drop
+  // appended children — same self-healing pattern as the header pills).
+  // -------------------------------------------------------------------------
+  (function phaseGroups() {
+    var PHASES = [
+      ["attract", "ATTRACT", ""],              // holds YouTube Insights
+      ["nurture", "NURTURE", "coming soon"],
+      ["convert", "CONVERT", "coming soon"],
+      ["deliver", "DELIVER", "coming soon"],
+    ];
+    function ensure() {
+      try {
+        if (document.getElementById("acvc-pg-attract")) return;
+        var G = document.querySelector('div[aria-labelledby="hermes-sidebar-plugin-nav-heading"]');
+        if (!G) return;
+        var ul = G.querySelector("ul");
+        if (!ul) return;
+        PHASES.forEach(function (p) {
+          var id = p[0], label = p[1], placeholder = p[2];
+          var holder = document.createElement("li");
+          holder.id = "acvc-pg-" + id;
+          holder.className = "acvc-pg-holder";
+          var open = true;
+          try { open = localStorage.getItem("acvc-pg-" + id) !== "0"; } catch (e) {}
+          if (open) holder.classList.add("acvc-pg-open");
+          var head = document.createElement("button");
+          head.type = "button";
+          head.className = "acvc-pg-head";
+          head.title = "Flywheel phase";
+          head.innerHTML = '<span class="acvc-pg-chev">▶</span>' + label;
+          head.onclick = function () {
+            var nowOpen = !holder.classList.contains("acvc-pg-open");
+            holder.classList.toggle("acvc-pg-open", nowOpen);
+            try { localStorage.setItem("acvc-pg-" + id, nowOpen ? "1" : "0"); } catch (e) {}
+          };
+          holder.appendChild(head);
+          if (placeholder) {
+            var body = document.createElement("div");
+            body.className = "acvc-pg-body";
+            body.textContent = placeholder;
+            holder.appendChild(body);
+          }
+          ul.appendChild(holder);
+        });
+      } catch (e) { /* cosmetic */ }
+    }
+    setInterval(ensure, 1500);
+    ensure();
+  })();
+
   // First-login onboarding redirect: exactly once per browser, EVERY first
   // login lands on the Roadmap — its Getting Started card walks the mentee
   // through keys and everything else. Only the generic landing routes
@@ -54,9 +109,28 @@
         // back to /roadmap when it isn't.
         '#hermes-sidebar-plugin-nav-heading{display:none;}' +
         G + ' > ul{display:flex;flex-direction:column;}' +
-        G + ' li:has(> a[href="/level"]){order:-3;}' +
-        G + ' li:has(> a[href="/roadmap"]){order:-2;}' +
-        G + ' li:has(> a[href="/youtube"]){order:-1;}' +
+        G + ' li{order:1;}' +
+        G + ' li:has(> a[href="/brief"]){order:-8;}' +
+        G + ' li:has(> a[href="/level"]){order:-7;}' +
+        G + ' li:has(> a[href="/roadmap"]){order:-6;}' +
+        // ATTRACT group header sits at -5; YouTube Insights nests inside it
+        G + ' li:has(> a[href="/youtube"]){order:-4;margin-left:14px;}' +
+        '#acvc-pg-attract{order:-5;}#acvc-pg-nurture{order:-3;}' +
+        '#acvc-pg-convert{order:-2;}#acvc-pg-deliver{order:-1;}' +
+        '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
+        // collapsing ATTRACT hides its nested link (pure CSS via :has)
+        G + ':has(#acvc-pg-attract:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
+        G + ':has(> span[class~="lg:hidden"]) .acvc-pg-holder{display:none;}' +
+        '.acvc-pg-head{display:flex;align-items:center;gap:6px;width:100%;' +
+        'background:none;border:none;cursor:pointer;text-align:left;' +
+        'padding:8px 20px 3px;font-size:11px;letter-spacing:0.12em;font-weight:600;' +
+        'color:var(--color-muted-foreground,#9aa0b4);font-family:inherit;}' +
+        '.acvc-pg-head:hover{color:currentColor;}' +
+        '.acvc-pg-chev{display:inline-block;font-size:9px;transition:transform 0.12s ease;}' +
+        '.acvc-pg-open .acvc-pg-chev{transform:rotate(90deg);}' +
+        '.acvc-pg-body{display:none;padding:2px 20px 4px 33px;font-size:12px;' +
+        'font-style:italic;color:var(--color-muted-foreground,#9aa0b4);opacity:0.75;}' +
+        '.acvc-pg-open .acvc-pg-body{display:block;}' +
         G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
