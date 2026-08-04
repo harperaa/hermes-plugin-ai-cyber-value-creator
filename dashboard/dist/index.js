@@ -28,8 +28,8 @@
   // -------------------------------------------------------------------------
   (function phaseGroups() {
     var PHASES = [
-      ["attract", "ATTRACT", ""],              // holds YouTube Insights
-      ["nurture", "NURTURE", "coming soon"],
+      ["attract", "ATTRACT", "coming soon"],   // Short Form Lab lands here
+      ["nurture", "NURTURE", ""],              // holds YouTube Insights
       ["convert", "CONVERT", "coming soon"],
       ["deliver", "DELIVER", "coming soon"],
     ];
@@ -113,13 +113,13 @@
         G + ' li:has(> a[href="/brief"]){order:-8;}' +
         G + ' li:has(> a[href="/level"]){order:-7;}' +
         G + ' li:has(> a[href="/roadmap"]){order:-6;}' +
-        // ATTRACT group header sits at -5; YouTube Insights nests inside it
+        // NURTURE group holds YouTube Insights (long-form content engine)
         G + ' li:has(> a[href="/youtube"]){order:-4;margin-left:14px;}' +
-        '#acvc-pg-attract{order:-5;}#acvc-pg-nurture{order:-3;}' +
-        '#acvc-pg-convert{order:-2;}#acvc-pg-deliver{order:-1;}' +
+        '#acvc-pg-attract{order:-6;}#acvc-pg-nurture{order:-5;}' +
+        '#acvc-pg-convert{order:-3;}#acvc-pg-deliver{order:-2;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
         // collapsing ATTRACT hides its nested link (pure CSS via :has)
-        G + ':has(#acvc-pg-attract:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
+        G + ':has(#acvc-pg-nurture:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
         G + ':has(> span[class~="lg:hidden"]) .acvc-pg-holder{display:none;}' +
         '.acvc-pg-head{display:flex;align-items:center;gap:6px;width:100%;' +
         'background:none;border:none;cursor:pointer;text-align:left;' +
