@@ -18,31 +18,18 @@
   var SDK = window.__HERMES_PLUGIN_SDK__;
   if (!SDK || !window.__HERMES_PLUGINS__) return;
 
-  // First-login onboarding redirect: exactly once per browser, and only
-  // while no LLM provider is connected yet, land the user on the Keys page
-  // (Get-key links + in-browser OAuth). Self-disarming; never fires again.
+  // First-login onboarding redirect: exactly once per browser, EVERY first
+  // login lands on the Roadmap — its Getting Started card walks the mentee
+  // through keys and everything else. Only the generic landing routes
+  // redirect; deep links stay untouched. Synchronous, so it wins the race
+  // with the SPA router.
   try {
     if (!localStorage.getItem("acvc-first-login-redirect")) {
-      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/setup-status")
-        .then(function (s) {
-          if (!s) return; // leave the one-shot unburned on bad data
-          if (!s.llmConnected && !s.grokConnected) {
-            localStorage.setItem("acvc-first-login-redirect", "1");
-            if (window.location.pathname !== "/env") {
-              window.location.assign("/env");
-            }
-          } else {
-            // Setup already complete (e.g. template ships a key): the first
-            // visit lands on the product — the Roadmap. Only redirect off
-            // the generic landing pages so deep links stay untouched.
-            localStorage.setItem("acvc-first-login-redirect", "1");
-            var p = window.location.pathname;
-            if (p === "/" || p === "/chat" || p === "/sessions") {
-              window.location.assign("/roadmap");
-            }
-          }
-        })
-        .catch(function () { /* fetch failed — keep the shot for next load */ });
+      localStorage.setItem("acvc-first-login-redirect", "1");
+      var p0 = window.location.pathname;
+      if (p0 === "/" || p0 === "/chat" || p0 === "/sessions") {
+        window.location.assign("/roadmap");
+      }
     }
   } catch (e) { /* storage unavailable — skip the nicety */ }
 
