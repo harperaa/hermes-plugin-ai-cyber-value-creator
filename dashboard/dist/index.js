@@ -39,7 +39,7 @@
         items: ["Referral Ledger", "Tribe Builder", "Shorts Lab"] },
       { id: "nurture", label: "NURTURE",
         pre: ["Community Engine"],
-        items: ["Content Lab", "Funnel Automations"] },
+        items: ["Funnel Automations"] },
       { id: "convert", label: "CONVERT",
         items: ["Offer Forge", "Sales Room", "Waitlist Gate", "Campaign Scheduler"] },
       { id: "deliver", label: "DELIVER",
