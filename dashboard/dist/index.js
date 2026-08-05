@@ -183,8 +183,8 @@
         '.acvc-pg-soon{flex-shrink:0;font-size:9px;letter-spacing:0.08em;' +
         'text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:999px;' +
         'border:1px solid color-mix(in srgb, currentColor 35%, transparent);}' +
-        G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR";}' +
-        G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR";}' +
+        G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR™";}' +
+        G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR™";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
         G + ' li:has(> a[href="/level"])::before,' +
         G + ' li:has(> a[href="/roadmap"])::before,' + G + ' li:has(> a[href="/kanban"])::before{' +
@@ -514,7 +514,7 @@
         '<label class="acvc-fb-ack"><input type="checkbox" id="acvc-fb-ack"> ' +
         "I agree that my current level and roadmap completion status will be " +
         "submitted as part of this feedback to Dr. Allen Harper, " +
-        "AI Cyber Value Creator. <b>(required)</b></label>" +
+        "AI Cyber Value Creator™. <b>(required)</b></label>" +
         '<div class="acvc-fb-err" id="acvc-fb-err"></div>';
 
       var row = document.createElement("div");
@@ -1709,18 +1709,18 @@
     return h("div", {
       onClick: props.onClose,
       role: "dialog", "aria-modal": true,
-      "aria-label": "AI Cyber Value Creator process diagram",
+      "aria-label": "AI Cyber Value Creator™ process diagram",
       className: "acvc-modal-backdrop",
     },
       h("div", { onClick: function (e) { e.stopPropagation(); }, className: "acvc-modal" },
         h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
           h("div", { style: { flex: 1, fontSize: 14, fontWeight: 800, color: TEXT } },
-            "AI Cyber Value Creator — Process"),
+            "AI Cyber Value Creator™ — Process"),
           h("button", { onClick: props.onClose, title: "Close", className: "acvc-modal-close" }, "×")),
         url
           ? h("img", {
               src: url,
-              alt: "AI Cyber Value Creator process diagram — Attract, Nurture, Convert, Deliver flywheel",
+              alt: "AI Cyber Value Creator™ process diagram — Attract, Nurture, Convert, Deliver flywheel",
               style: {
                 display: "block", maxWidth: "100%", maxHeight: "84vh",
                 objectFit: "contain", borderRadius: 8, background: "#fff",
@@ -1801,7 +1801,7 @@
           onKeyDown: function (e) {
             if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiagramOpen(true); }
           },
-          title: "View the AI Cyber Value Creator process diagram",
+          title: "View the AI Cyber Value Creator™ process diagram",
           className: "acvc-hub",
         },
           h("span", { style: { fontSize: 18, fontWeight: 800, lineHeight: 1.2, padding: "0 12px" } },
@@ -1921,7 +1921,7 @@
             h("div", { key: "note", className: "acvc-gate-footer" },
               lap.index < props.totalLaps
                 ? "When every phase has its step done, start the next lap."
-                : "Final lap — completing it means you now are an AI Cyber Value Creator. Congrats!"),
+                : "Final lap — completing it means you now are an AI Cyber Value Creator™. Congrats!"),
           ]
         : null
     );
@@ -2200,9 +2200,9 @@
         },
           h("div", null,
             h("div", { style: { fontSize: 13, letterSpacing: 1.5, color: MUTED, textTransform: "uppercase" } },
-              "AI Cyber Value Creator"),
+              "AI Cyber Value Creator™"),
             h("h1", { style: { fontSize: 30, margin: "4px 0 6px", fontWeight: 800 } },
-              (data.centerLabel || "AI Cyber Value Creator") + " Roadmap"),
+              (data.centerLabel || "AI Cyber Value Creator™") + " Roadmap"),
             h("div", { style: { color: MUTED, fontSize: 14, maxWidth: 640 } },
               "First lay the ", h("b", null, "foundation"),
               " — Create Value (ICP → Problems → Solutions → Offer). Then work the four-phase value flywheel in ",
@@ -2276,7 +2276,7 @@
 
         data.build
           ? h("div", { className: "acvc-version", style: { marginTop: 14, textAlign: "center", fontSize: 11, color: MUTED } },
-              "AI Cyber Value Creator v" + data.build)
+              "AI Cyber Value Creator™ v" + data.build)
           : null
       )
     );
