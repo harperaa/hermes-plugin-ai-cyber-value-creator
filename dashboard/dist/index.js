@@ -36,7 +36,7 @@
     // real YouTube Insights link (N2); its items stack below it.
     var PHASES = [
       { id: "attract", label: "ATTRACT",
-        items: ["Referral Ledger", "Tribe Builder", "Shorts Lab"] },
+        items: ["Referral Ledger", "Tribe Builder"] },   // Shorts Lab shipped — real /shorts link below the stack
       { id: "nurture", label: "NURTURE",
         pre: ["Community Engine"],
         items: ["Funnel Automations"] },
@@ -153,7 +153,8 @@
         G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
         // NURTURE holds YouTube Insights; its soon-items stack below the link
         G + ' li:has(> a[href="/youtube"]){order:-10;margin-left:14px;}' +
-        '#acvc-pg-attract-head{order:-14;}#acvc-pg-attract-items{order:-13;}' +
+        '#acvc-pg-attract-head{order:-15;}#acvc-pg-attract-items{order:-14;}' +
+        G + ' li:has(> a[href="/shorts"]){order:-13;margin-left:14px;}' +
         '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
         '#acvc-pg-nurture-items{order:-9;}' +
         '#acvc-pg-convert-head{order:-7;}#acvc-pg-convert-items{order:-6;}' +
@@ -615,7 +616,8 @@
   // survives SPA navigation; honors the shared FX toggle (vcl-effects-off).
   // -------------------------------------------------------------------------
   (function ambientBackground() {
-    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1, "/delivery": 1 };
+    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1, "/delivery": 1,
+                   "/shorts": 1 };
     var canvas = null, tintEl = null, raf = 0, stars = null;
     var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
     var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
