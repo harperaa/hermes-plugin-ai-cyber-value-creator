@@ -1,4 +1,4 @@
-# AI Cyber Value Creator installed
+# AI Cyber Value Creator™ installed
 
 1. **Enable it** (if you didn't pass `--enable`):
    `hermes plugins enable ai-cyber-value-creator`

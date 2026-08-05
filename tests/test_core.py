@@ -251,7 +251,7 @@ def test_start_value_step_unknown_id():
 
 def test_slash_commands():
     text = commands.handle_value_creator("")
-    assert "AI Cyber Value Creator roadmap" in text
+    assert "AI Cyber Value Creator™ roadmap" in text
     assert "create-value-icp" in text
     usage = commands.handle_value_step("")
     assert usage.startswith("Usage:")

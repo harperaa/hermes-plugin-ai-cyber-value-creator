@@ -12,7 +12,7 @@ def handle_value_creator(raw_args: str) -> str:
     data = progress.roadmap_data()
     pct = round(100 * data["doneTasks"] / data["totalTasks"]) if data["totalTasks"] else 0
     lines = [
-        f"**AI Cyber Value Creator roadmap** — {pct}% ({data['doneTasks']}/{data['totalTasks']} steps done)",
+        f"**AI Cyber Value Creator™ roadmap** — {pct}% ({data['doneTasks']}/{data['totalTasks']} steps done)",
         "",
     ]
     for phase in data["phases"]:

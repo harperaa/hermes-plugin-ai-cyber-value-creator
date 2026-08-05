@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 PLUGIN_ID = "ai-cyber-value-creator"
 PLUGIN_VERSION = "1.0.0"
 
-CENTER_LABEL = "AI Cyber Value Creator"
+CENTER_LABEL = "AI Cyber Value Creator™"
 CONTEXT_FILE_NAME = "company-context.md"
 PLAYBOOK_SKILL_SLUG = "ai-cyber-value-creator-playbook"
 CONTEXT_SKILL_SLUG = "company-context"
@@ -37,7 +37,7 @@ ELEVATOR_PITCH_HINT = "One line — the final foundation step"
 # Skill files this plugin ships (skills/<slug>/SKILL.md), registered as
 # "ai-cyber-value-creator:<slug>".
 FILE_SKILLS = [
-    {"slug": PLAYBOOK_SKILL_SLUG, "name": "AI Cyber Value Creator Playbook"},
+    {"slug": PLAYBOOK_SKILL_SLUG, "name": "AI Cyber Value Creator™ Playbook"},
     {"slug": "define-icp", "name": "Define ICP"},
     {"slug": "research-problems", "name": "Understand Their Problems"},
     {"slug": "build-solutions", "name": "Build Solutions"},
@@ -326,7 +326,7 @@ def build_task_description(
     header = [
         f"## {phase.name} → {task.title}",
         "",
-        "This task is part of the **AI Cyber Value Creator** playbook.",
+        "This task is part of the **AI Cyber Value Creator™** playbook.",
         f"**Phase:** {phase.name} (goal: {phase.goal})",
         f"**Step:** {task.title}",
         f"**Intent:** {task.blurb}",
@@ -462,7 +462,7 @@ def build_task_description(
             "### How to run this step",
             task.brief,
             "",
-            "Run it the AI Cyber Value Creator way: **search the available skills FIRST**,",
+            "Run it the AI Cyber Value Creator™ way: **search the available skills FIRST**,",
             "**clarify scope and surface open questions BEFORE acting**, then execute",
             "methodically. Update the roadmap step and complete this task when the",
             "step is done.",
