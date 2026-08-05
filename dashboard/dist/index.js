@@ -148,6 +148,7 @@
         '#hermes-sidebar-plugin-nav-heading{display:none;}' +
         G + ' > ul{display:flex;flex-direction:column;}' +
         G + ' li{order:1;}' +
+        G + ' li:has(> a[href="/metrics"]){order:-25;}' +
         G + ' li:has(> a[href="/brief"]){order:-20;}' +
         G + ' li:has(> a[href="/level"]){order:-19;}' +
         G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
@@ -618,7 +619,7 @@
   // -------------------------------------------------------------------------
   (function ambientBackground() {
     var ROUTES = { "/roadmap": 1, "/longform": 1, "/brief": 1, "/delivery": 1,
-                   "/shortform": 1 };
+                   "/shortform": 1, "/metrics": 1 };
     var canvas = null, tintEl = null, raf = 0, stars = null;
     var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
     var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
