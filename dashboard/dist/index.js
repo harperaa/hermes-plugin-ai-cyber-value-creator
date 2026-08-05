@@ -152,9 +152,10 @@
         G + ' li:has(> a[href="/level"]){order:-19;}' +
         G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
         // NURTURE holds YouTube Insights; its soon-items stack below the link
-        G + ' li:has(> a[href="/youtube"]){order:-10;margin-left:14px;}' +
+        G + ' li:has(> a[href="/longform"]){order:-10;margin-left:14px;}' +
         '#acvc-pg-attract-head{order:-15;}#acvc-pg-attract-items{order:-14;}' +
-        G + ' li:has(> a[href="/shorts"]){order:-13;margin-left:14px;}' +
+        G + ' li:has(> a[href="/shortform"]){order:-13;margin-left:14px;}' +
+        G + ':has(#acvc-pg-attract-head:not(.acvc-pg-open)) li:has(> a[href="/shortform"]){display:none;}' +
         '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
         '#acvc-pg-nurture-items{order:-9;}' +
         '#acvc-pg-convert-head{order:-7;}#acvc-pg-convert-items{order:-6;}' +
@@ -164,7 +165,7 @@
         G + ':has(#acvc-pg-deliver-head:not(.acvc-pg-open)) li:has(> a[href="/delivery"]){display:none;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
         // collapsing NURTURE hides its nested real link (pure CSS via :has)
-        G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/youtube"]){display:none;}' +
+        G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/longform"]){display:none;}' +
         '.acvc-pg-items{display:none;}' +
         '.acvc-pg-items.acvc-pg-open{display:block;}' +
         G + ':has(> span[class~="lg:hidden"]) .acvc-pg-holder{display:none;}' +
@@ -616,8 +617,8 @@
   // survives SPA navigation; honors the shared FX toggle (vcl-effects-off).
   // -------------------------------------------------------------------------
   (function ambientBackground() {
-    var ROUTES = { "/roadmap": 1, "/youtube": 1, "/brief": 1, "/delivery": 1,
-                   "/shorts": 1 };
+    var ROUTES = { "/roadmap": 1, "/longform": 1, "/brief": 1, "/delivery": 1,
+                   "/shortform": 1 };
     var canvas = null, tintEl = null, raf = 0, stars = null;
     var pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
     var theme = { r: 20, g: 184, b: 166 }, fore = { r: 230, g: 230, b: 240 };
@@ -2044,7 +2045,7 @@
           " — the OAuth and Providers tabs have Get-key links and in-browser sign-ins for every provider (Anthropic/Claude, OpenAI, xAI Grok, Nous, and more). Connect ANY one you already use. Then open the ",
           h("a", { href: "/models", style: GS_LINK }, "Models page"),
           " and select your provider (LLM) and its model — two clicks, and your agent is live. (xAI users: pick Grok 4.5.)")),
-      h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for YouTube Insights)" },
+      h(StepRow, { num: "2", done: !!status.transcriptKeySet, title: "Add a transcript API key (optional — for Long Form)" },
         h("div", { style: { color: MUTED, fontSize: 13 } },
           "Only needed if you want competitor YouTube intelligence. Create a key at ",
           h("a", { href: "https://transcriptapi.com", target: "_blank", rel: "noreferrer", style: GS_LINK }, "transcriptapi.com"),
