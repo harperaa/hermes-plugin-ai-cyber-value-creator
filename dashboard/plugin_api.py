@@ -523,3 +523,94 @@ def pin_cron():
     return {"ok": True, "provider": provider, "model": model, "jobs": pinned}
 
 
+# ---------------------------------------------------------------------------
+# Accomplishments — the acvc plugin owns the aggregate: it declares its own
+# roadmap achievement (STRICT: every step must be done) and collects each
+# sibling plugin's ACHIEVEMENT + achievements_progress() so the hermes
+# Achievements page can show one program-wide widget.
+# ---------------------------------------------------------------------------
+
+ACHIEVEMENT = {
+    "id": "roadmap-complete",
+    "name": "Value Creator Roadmap",
+    "icon": "🗺️",
+    "description": "Walk the whole AI Cyber Value Creator™ roadmap — "
+                   "every step of every phase, no skips.",
+}
+
+
+def achievements_progress() -> dict:
+    """Full credit ONLY when every roadmap step is done."""
+    _, _, progress = _core()
+    data = progress.roadmap_data()
+    items = []
+    all_done = True
+    any_steps = False
+    for phase in data.get("phases") or []:
+        tasks = phase.get("tasks") or []
+        done = sum(1 for t in tasks if t.get("status") == "done")
+        any_steps = any_steps or bool(tasks)
+        if done < len(tasks):
+            all_done = False
+        items.append({
+            "id": phase.get("id") or phase.get("title") or "phase",
+            "label": f"{phase.get('title') or 'Phase'} "
+                     f"({done}/{len(tasks)} steps)",
+            "done": bool(tasks) and done == len(tasks),
+        })
+    return {"items": items, "complete": bool(any_steps) and all_done}
+
+
+_ACCOMPLISH_ORDER = ["ai-cyber-value-creator", "value-creator-level",
+                     "daily-brief", "shorts-lab", "youtube-insights",
+                     "delivery-kit", "value-dashboard"]
+
+
+def _sibling_progress():
+    """Load each installed plugin's ACHIEVEMENT declaration + progress.
+    Broken or absent providers are skipped — one plugin can never take the
+    whole widget down."""
+    out = {}
+    root = _PLUGIN_ROOT.parent
+    try:
+        folders = sorted(p for p in root.iterdir() if p.is_dir())
+    except Exception:  # noqa: BLE001
+        folders = []
+    for folder in folders:
+        api = folder / "dashboard" / "plugin_api.py"
+        if folder == _PLUGIN_ROOT or not api.exists():
+            continue
+        try:
+            modname = f"acvc_accomplish_{folder.name.replace('-', '_')}"
+            mod = sys.modules.get(modname)
+            if mod is None:
+                spec = importlib.util.spec_from_file_location(
+                    modname, str(api))
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[modname] = mod
+                spec.loader.exec_module(mod)
+            ach = getattr(mod, "ACHIEVEMENT", None)
+            fn = getattr(mod, "achievements_progress", None)
+            if isinstance(ach, dict) and callable(fn):
+                out[folder.name] = {**ach, **fn(), "plugin": folder.name}
+        except Exception:  # noqa: BLE001 — a sick sibling is skipped
+            continue
+    return out
+
+
+@router.get("/accomplishments")
+def accomplishments():
+    entries = _sibling_progress()
+    try:
+        entries["ai-cyber-value-creator"] = {
+            **ACHIEVEMENT, **achievements_progress(),
+            "plugin": "ai-cyber-value-creator"}
+    except Exception:  # noqa: BLE001
+        pass
+    ordered = [entries[k] for k in _ACCOMPLISH_ORDER if k in entries]
+    ordered += [v for k, v in sorted(entries.items())
+                if k not in _ACCOMPLISH_ORDER]
+    return {"plugins": ordered,
+            "completed": sum(1 for p in ordered if p.get("complete")),
+            "total": len(ordered)}
+

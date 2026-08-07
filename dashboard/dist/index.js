@@ -751,6 +751,101 @@
     check();
   })();
 
+  // -------------------------------------------------------------------------
+  // Accomplishments widget — rides the hermes Achievements page (/achievements)
+  // and shows program progress for every AI Cyber Value Creator™ plugin.
+  // Data comes from this plugin's /accomplishments aggregator.
+  // -------------------------------------------------------------------------
+  (function accomplishments() {
+    var WID = "vca-accomplish";
+    var CSS_ID = "vca-accomplish-css";
+    var loading = false;
+
+    function ensureCss() {
+      if (document.getElementById(CSS_ID)) return;
+      var st = document.createElement("style");
+      st.id = CSS_ID;
+      st.textContent =
+        "#" + WID + "{margin:0 0 26px;border:1px solid var(--color-border,#2b2b44);" +
+        "border-radius:14px;padding:16px 18px;background:var(--color-card,#16162a);}" +
+        "#" + WID + " .vca-eyebrow{letter-spacing:3px;font-size:11px;font-weight:800;" +
+        "color:var(--color-primary,#14b8a6);margin-bottom:2px;}" +
+        "#" + WID + " .vca-title{font-weight:800;font-size:16px;margin-bottom:12px;}" +
+        "#" + WID + " .vca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}" +
+        "#" + WID + " .vca-card{border:1px solid var(--color-border,#2b2b44);" +
+        "border-radius:10px;padding:12px 14px;background:var(--color-secondary,#13131f);}" +
+        "#" + WID + " .vca-card.vca-done{border-color:color-mix(in srgb,var(--color-primary,#14b8a6) 55%,transparent);}" +
+        "#" + WID + " .vca-head{display:flex;align-items:center;gap:8px;font-weight:800;" +
+        "font-size:13.5px;margin-bottom:4px;}" +
+        "#" + WID + " .vca-chip{margin-left:auto;font-size:10.5px;font-weight:800;" +
+        "border-radius:999px;padding:2px 9px;color:var(--color-primary,#14b8a6);" +
+        "border:1px solid color-mix(in srgb,var(--color-primary,#14b8a6) 60%,transparent);}" +
+        "#" + WID + " .vca-desc{font-size:11.5px;color:var(--color-muted-foreground,#9aa0b4);" +
+        "margin-bottom:8px;line-height:1.45;}" +
+        "#" + WID + " .vca-item{display:flex;gap:7px;font-size:12px;line-height:1.6;align-items:baseline;}" +
+        "#" + WID + " .vca-item .vca-mark{flex-shrink:0;}" +
+        "#" + WID + " .vca-item.vca-ok .vca-mark{color:var(--color-primary,#14b8a6);}" +
+        "#" + WID + " .vca-item.vca-todo{color:var(--color-muted-foreground,#9aa0b4);}" ;
+      document.head.appendChild(st);
+    }
+
+    function render(data) {
+      var host = document.querySelector(".ha-page");
+      if (!host || document.getElementById(WID)) return;
+      ensureCss();
+      var box = document.createElement("div");
+      box.id = WID;
+      var head = '<div class="vca-eyebrow">AI CYBER VALUE CREATOR\u2122</div>' +
+        '<div class="vca-title">Program accomplishments \u2014 ' +
+        data.completed + "/" + data.total + ' complete</div>';
+      var cards = (data.plugins || []).map(function (p) {
+        var items = (p.items || []).map(function (it) {
+          return '<div class="vca-item ' + (it.done ? "vca-ok" : "vca-todo") +
+            '"><span class="vca-mark">' + (it.done ? "\u2713" : "\u25CB") +
+            "</span><span>" + esc(it.label) + "</span></div>";
+        }).join("");
+        return '<div class="vca-card' + (p.complete ? " vca-done" : "") + '">' +
+          '<div class="vca-head"><span>' + esc(p.icon || "\u2726") +
+          "</span><span>" + esc(p.name || p.plugin) + "</span>" +
+          (p.complete ? '<span class="vca-chip">COMPLETE</span>' : "") +
+          "</div>" +
+          '<div class="vca-desc">' + esc(p.description || "") + "</div>" +
+          items + "</div>";
+      }).join("");
+      box.innerHTML = head + '<div class="vca-grid">' + cards + "</div>";
+      host.insertBefore(box, host.firstChild);
+    }
+
+    function esc(t) {
+      return String(t == null ? "" : t)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function tick() {
+      var onPage = window.location.pathname === "/achievements";
+      var existing = document.getElementById(WID);
+      if (!onPage) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing || loading) return;
+      if (!document.querySelector(".ha-page")) return;
+      loading = true;
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/accomplishments")
+        .then(function (data) {
+          loading = false;
+          if (data && data.plugins && data.plugins.length) render(data);
+        }, function () {
+          // transient failure: back off instead of hammering every tick
+          setTimeout(function () { loading = false; }, 10000);
+        });
+    }
+    window.addEventListener("popstate", tick);
+    setInterval(tick, 800);
+    tick();
+  })();
+
   var React = SDK.React;
   var h = React.createElement;
   var hooks = SDK.hooks;
