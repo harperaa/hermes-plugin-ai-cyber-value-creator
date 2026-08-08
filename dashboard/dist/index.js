@@ -762,30 +762,24 @@
     var loading = false;
 
     function ensureCss() {
+      // the widget reuses the achievements plugin's OWN classes (ha-card,
+      // ha-grid, progress bars, What-counts collapsibles) so it renders
+      // native — only a thin shim for the emoji icon + checklist lines
       if (document.getElementById(CSS_ID)) return;
       var st = document.createElement("style");
       st.id = CSS_ID;
       st.textContent =
-        "#" + WID + "{margin:0 0 26px;border:1px solid var(--color-border,#2b2b44);" +
-        "border-radius:14px;padding:16px 18px;background:var(--color-card,#16162a);}" +
-        "#" + WID + " .vca-eyebrow{letter-spacing:3px;font-size:11px;font-weight:800;" +
-        "color:var(--color-primary,#14b8a6);margin-bottom:2px;}" +
-        "#" + WID + " .vca-title{font-weight:800;font-size:16px;margin-bottom:12px;}" +
-        "#" + WID + " .vca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}" +
-        "#" + WID + " .vca-card{border:1px solid var(--color-border,#2b2b44);" +
-        "border-radius:10px;padding:12px 14px;background:var(--color-secondary,#13131f);}" +
-        "#" + WID + " .vca-card.vca-done{border-color:color-mix(in srgb,var(--color-primary,#14b8a6) 55%,transparent);}" +
-        "#" + WID + " .vca-head{display:flex;align-items:center;gap:8px;font-weight:800;" +
-        "font-size:13.5px;margin-bottom:4px;}" +
-        "#" + WID + " .vca-chip{margin-left:auto;font-size:10.5px;font-weight:800;" +
-        "border-radius:999px;padding:2px 9px;color:var(--color-primary,#14b8a6);" +
-        "border:1px solid color-mix(in srgb,var(--color-primary,#14b8a6) 60%,transparent);}" +
-        "#" + WID + " .vca-desc{font-size:11.5px;color:var(--color-muted-foreground,#9aa0b4);" +
-        "margin-bottom:8px;line-height:1.45;}" +
-        "#" + WID + " .vca-item{display:flex;gap:7px;font-size:12px;line-height:1.6;align-items:baseline;}" +
+        "#" + WID + "{margin:0 0 26px;}" +
+        "#" + WID + " .vca-kick{letter-spacing:2px;font-size:12px;" +
+        "font-weight:800;color:var(--color-primary,#14b8a6);" +
+        "margin:0 0 10px;}" +
+        "#" + WID + " .ha-icon{font-size:22px;line-height:1;" +
+        "display:flex;align-items:center;justify-content:center;}" +
+        "#" + WID + " .vca-item{display:flex;gap:7px;font-size:12.5px;" +
+        "line-height:1.7;align-items:baseline;}" +
         "#" + WID + " .vca-item .vca-mark{flex-shrink:0;}" +
         "#" + WID + " .vca-item.vca-ok .vca-mark{color:var(--color-primary,#14b8a6);}" +
-        "#" + WID + " .vca-item.vca-todo{color:var(--color-muted-foreground,#9aa0b4);}" ;
+        "#" + WID + " .vca-item.vca-todo{color:var(--color-muted-foreground,#9aa0b4);}";
       document.head.appendChild(st);
     }
 
@@ -795,24 +789,49 @@
       ensureCss();
       var box = document.createElement("div");
       box.id = WID;
-      var head = '<div class="vca-eyebrow">AI CYBER VALUE CREATOR\u2122</div>' +
-        '<div class="vca-title">Program accomplishments \u2014 ' +
-        data.completed + "/" + data.total + ' complete</div>';
+      var head = '<div class="vca-kick">AI CYBER VALUE CREATOR\u2122 ' +
+        '\u2014 PROGRAM ACCOMPLISHMENTS \u00b7 ' + data.completed +
+        "/" + data.total + " COMPLETE</div>";
       var cards = (data.plugins || []).map(function (p) {
-        var items = (p.items || []).map(function (it) {
-          return '<div class="vca-item ' + (it.done ? "vca-ok" : "vca-todo") +
-            '"><span class="vca-mark">' + (it.done ? "\u2713" : "\u25CB") +
-            "</span><span>" + esc(it.label) + "</span></div>";
+        var items = p.items || [];
+        var done = items.filter(function (it) { return it.done; }).length;
+        var pct = items.length
+          ? Math.round(done * 100 / items.length) : 0;
+        var state = p.complete ? "unlocked" : "discovered";
+        var list = items.map(function (it) {
+          return '<div class="vca-item ' +
+            (it.done ? "vca-ok" : "vca-todo") +
+            '"><span class="vca-mark">' +
+            (it.done ? "\u2713" : "\u25CB") + "</span><span>" +
+            esc(it.label) + "</span></div>";
         }).join("");
-        return '<div class="vca-card' + (p.complete ? " vca-done" : "") + '">' +
-          '<div class="vca-head"><span>' + esc(p.icon || "\u2726") +
-          "</span><span>" + esc(p.name || p.plugin) + "</span>" +
-          (p.complete ? '<span class="vca-chip">COMPLETE</span>' : "") +
+        return '<div class="ha-card ha-state-' + state + '">' +
+          '<div class="ha-card-content">' +
+          '<div class="ha-card-head">' +
+          '<div class="ha-icon">' + esc(p.icon || "\u2726") + "</div>" +
+          '<div class="ha-card-title-wrap">' +
+          '<div class="ha-card-title">' + esc(p.name || p.plugin) +
           "</div>" +
-          '<div class="vca-desc">' + esc(p.description || "") + "</div>" +
-          items + "</div>";
+          '<div class="ha-card-category">AI Cyber Value Creator' +
+          "\u2122</div></div>" +
+          '<div class="ha-badges">' +
+          '<span class="ha-state-badge">' +
+          (p.complete ? "Unlocked" : "In progress") + "</span>" +
+          '<span class="ha-tier-badge">' + done + "/" + items.length +
+          "</span></div></div>" +
+          '<p class="ha-description">' + esc(p.description || "") +
+          "</p>" +
+          '<details class="ha-criteria"><summary>What counts</summary>' +
+          list + "</details>" +
+          '<div class="ha-progress-row">' +
+          '<div class="ha-progress-track">' +
+          '<div class="ha-progress-fill" style="width:' +
+          Math.max(3, pct) + '%"></div></div>' +
+          '<span class="ha-progress-text">' + done + " / " +
+          items.length + "</span></div>" +
+          "</div></div>";
       }).join("");
-      box.innerHTML = head + '<div class="vca-grid">' + cards + "</div>";
+      box.innerHTML = head + '<div class="ha-grid">' + cards + "</div>";
       host.insertBefore(box, host.firstChild);
     }
 
