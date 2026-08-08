@@ -561,9 +561,12 @@ def achievements_progress() -> dict:
     return {"items": items, "complete": bool(any_steps) and all_done}
 
 
-_ACCOMPLISH_ORDER = ["ai-cyber-value-creator", "value-creator-level",
-                     "daily-brief", "shorts-lab", "youtube-insights",
-                     "delivery-kit", "value-dashboard"]
+# Mirrors the SIDEBAR order (Dashboard, Brief, Level, Roadmap, then the
+# pillar pages top to bottom). Keep in sync when adding plugins — the
+# accomplishments memory note covers this.
+_ACCOMPLISH_ORDER = ["value-dashboard", "daily-brief",
+                     "value-creator-level", "ai-cyber-value-creator",
+                     "shorts-lab", "youtube-insights", "delivery-kit"]
 
 
 def _sibling_progress():
