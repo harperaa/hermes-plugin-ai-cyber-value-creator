@@ -805,7 +805,8 @@
             (it.done ? "\u2713" : "\u25CB") + "</span><span>" +
             esc(it.label) + "</span></div>";
         }).join("");
-        return '<div class="ha-card ha-state-' + state + '">' +
+        return '<div class="ha-card ha-state-' + state +
+          (p.complete ? ' ha-tier-gold' : ' ha-tier-copper') + '">' +
           '<div class="ha-card-content">' +
           '<div class="ha-card-head">' +
           '<div class="ha-icon">' + esc(p.icon || "\u2726") + "</div>" +
