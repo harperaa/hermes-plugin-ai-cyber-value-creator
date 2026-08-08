@@ -552,10 +552,10 @@ def achievements_progress() -> dict:
         any_steps = any_steps or bool(tasks)
         if done < len(tasks):
             all_done = False
+        pillar = (phase.get("name") or phase.get("id") or "Phase")
         items.append({
-            "id": phase.get("id") or phase.get("title") or "phase",
-            "label": f"{phase.get('title') or 'Phase'} "
-                     f"({done}/{len(tasks)} steps)",
+            "id": phase.get("id") or pillar,
+            "label": f"{pillar} — {done}/{len(tasks)} steps",
             "done": bool(tasks) and done == len(tasks),
         })
     return {"items": items, "complete": bool(any_steps) and all_done}
