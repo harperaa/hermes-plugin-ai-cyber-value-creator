@@ -434,7 +434,10 @@ def update_check() -> dict:
                        + (f"?environmentId={environment}" if environment else ""))
     return {
         # No HPD_VERSION (dev checkout) -> never claim an update.
-        "updateAvailable": bool(current and latest and latest != current),
+        # ordering, not inequality: a stale beacon must never prompt a
+        # "downgrade" (versions are zero-padded YYYY.MMDD.HHMM, so string
+        # comparison orders correctly)
+        "updateAvailable": bool(current and latest and latest > current),
         "current": current,
         "latest": latest,
         "railwayUrl": railway_url,
