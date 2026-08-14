@@ -716,3 +716,44 @@
 .acvc-fb-ident-fields > div { display: flex; flex-direction: column; justify-content: flex-end; }
 /* align the note header with 'How are you feeling?' beside it */
 .acvc-fb-notecol > label:first-child { margin-top: 0 !important; }
+
+/* ---- update modal: rolled-up release notes ---- */
+.acvc-update-notes-head { font-size: 13px; font-weight: 700; margin: 2px 0 6px; }
+.acvc-update-notes {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border, #2a3142);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--color-card, #10141f) 60%, transparent);
+}
+.acvc-update-rel { margin-bottom: 12px; }
+.acvc-update-rel:last-child { margin-bottom: 0; }
+.acvc-update-rel-ver { font-size: 13px; font-weight: 800; }
+.acvc-update-rel-date { font-weight: 400; color: var(--color-muted-foreground, #9aa0b4); }
+.acvc-update-rel-repo {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; margin: 6px 0 2px;
+  color: var(--color-muted-foreground, #9aa0b4);
+}
+.acvc-update-notes ul { margin: 0 0 4px 16px; padding: 0; }
+.acvc-update-notes li { font-size: 12.5px; line-height: 1.55; }
+
+/* ---- sidebar AICVC version row + Notes modal ---- */
+.acvc-version-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 20px 10px;
+  font-size: 11.5px; letter-spacing: 0.06em;
+  color: var(--color-muted-foreground, #9aa0b4);
+  font-variant-numeric: tabular-nums;
+}
+.acvc-version-right { display: inline-flex; align-items: center; gap: 6px; }
+.acvc-version-notes-btn {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+  padding: 1px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--color-border, #2a3142);
+  background: transparent; color: inherit;
+}
+.acvc-version-notes-btn:hover { border-color: #34d399; color: #34d399; }
+.acvc-notes-tall { max-height: min(48vh, 420px); }

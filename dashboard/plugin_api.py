@@ -392,32 +392,78 @@ _BEACON_GIST = os.environ.get("HPD_BEACON_GIST", "53cc65f66a044777e930e044d43e49
 _UPDATE_CACHE: dict = {"at": 0.0, "latest": ""}
 
 
-def _latest_published_version() -> str:
+def _fetch_beacon_file(filename: str) -> str:
+    """Fetch one file from the beacon gist (API first, raw fallback)."""
     import json as _json
-    import time as _time
     import urllib.request
-    now = _time.time()
-    if _UPDATE_CACHE["latest"] and now - _UPDATE_CACHE["at"] < 3600:
-        return _UPDATE_CACHE["latest"]
-    latest = ""
     for url, extract in (
         (f"https://api.github.com/gists/{_BEACON_GIST}",
-         lambda b: _json.loads(b)["files"]["VERSION"]["content"]),
-        (f"https://gist.githubusercontent.com/harperaa/{_BEACON_GIST}/raw/VERSION",
+         lambda b: _json.loads(b)["files"][filename]["content"]),
+        (f"https://gist.githubusercontent.com/harperaa/{_BEACON_GIST}"
+         f"/raw/{filename}",
          lambda b: b.decode()),
     ):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "curl/8.4.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
-                latest = extract(resp.read()).strip()
-            if latest:
-                break
+                content = extract(resp.read()).strip()
+            if content:
+                return content
         except Exception:
             continue
+    return ""
+
+
+def _latest_published_version() -> str:
+    import time as _time
+    now = _time.time()
+    if _UPDATE_CACHE["latest"] and now - _UPDATE_CACHE["at"] < 3600:
+        return _UPDATE_CACHE["latest"]
+    latest = _fetch_beacon_file("VERSION")
     if latest:
         _UPDATE_CACHE["latest"] = latest
         _UPDATE_CACHE["at"] = now
     return latest
+
+
+_NOTES_CACHE: dict = {"at": 0.0, "notes": None}
+
+
+def _published_release_notes() -> list:
+    """Per-release notes mirrored to the beacon gist at publish time.
+    Shape: [{version, date, sections: {repo: [subject, ...]}}, ...],
+    newest first. Empty list when the gist has no NOTES file yet."""
+    import json as _json
+    import time as _time
+    now = _time.time()
+    if _NOTES_CACHE["notes"] is not None and now - _NOTES_CACHE["at"] < 3600:
+        return _NOTES_CACHE["notes"]
+    notes: list = []
+    raw = _fetch_beacon_file("NOTES")
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, list):
+                notes = [n for n in data
+                         if isinstance(n, dict) and n.get("version")]
+        except ValueError:
+            notes = []
+    if notes:
+        _NOTES_CACHE["notes"] = notes
+        _NOTES_CACHE["at"] = now
+    return notes
+
+
+@router.get("/release-notes")
+def release_notes() -> dict:
+    """All published release notes (newest first) + the running version —
+    drives the sidebar 'AICVC [Notes]' modal."""
+    notes = list(_published_release_notes())
+    notes.sort(key=lambda n: str(n.get("version") or ""), reverse=True)
+    return {
+        "current": (os.environ.get("HPD_VERSION") or "").strip(),
+        "notes": notes,
+    }
 
 
 @router.get("/update-check")
@@ -432,15 +478,24 @@ def update_check() -> dict:
         railway_url = (f"https://railway.com/project/{project}"
                        f"/service/{service}"
                        + (f"?environmentId={environment}" if environment else ""))
+    update_available = bool(current and latest and latest > current)
+    notes: list = []
+    if update_available:
+        # Roll up EVERY release the deployment is behind, newest first, so
+        # the modal shows exactly what the upgrade contains.
+        notes = [n for n in _published_release_notes()
+                 if str(n.get("version") or "") > current]
+        notes.sort(key=lambda n: str(n.get("version") or ""), reverse=True)
     return {
         # No HPD_VERSION (dev checkout) -> never claim an update.
         # ordering, not inequality: a stale beacon must never prompt a
         # "downgrade" (versions are zero-padded YYYY.MMDD.HHMM, so string
         # comparison orders correctly)
-        "updateAvailable": bool(current and latest and latest > current),
+        "updateAvailable": update_available,
         "current": current,
         "latest": latest,
         "railwayUrl": railway_url,
+        "releaseNotes": notes,
     }
 
 

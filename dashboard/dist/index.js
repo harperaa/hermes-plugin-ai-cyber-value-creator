@@ -215,6 +215,39 @@
   // bar when a newer image than the running one has been published. Links
   // (new tab) to the Railway service page where Redeploy pulls :stable.
   // -------------------------------------------------------------------------
+  function acvcEsc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Shared renderer: scrollable list of release entries (newest first) —
+  // used by the update modal (releases behind) and the sidebar Notes modal
+  // (all releases).
+  function acvcNotesListHtml(notes) {
+    var html = '<div class="acvc-update-notes">';
+    (notes || []).forEach(function (rel) {
+      html += '<div class="acvc-update-rel">' +
+        '<div class="acvc-update-rel-ver">' + acvcEsc(rel.version) +
+        (rel.date ? '<span class="acvc-update-rel-date"> — ' +
+          acvcEsc(rel.date) + "</span>" : "") + "</div>";
+      var sections = rel.sections || {};
+      Object.keys(sections).forEach(function (repo) {
+        var items = sections[repo] || [];
+        if (!items.length) return;
+        html += '<div class="acvc-update-rel-repo">' + acvcEsc(repo) +
+          "</div><ul>";
+        items.forEach(function (s) { html += "<li>" + acvcEsc(s) + "</li>"; });
+        html += "</ul>";
+      });
+      if (!Object.keys(sections).length && rel.note) {
+        html += '<div class="acvc-update-rel-repo">' + acvcEsc(rel.note) +
+          "</div>";
+      }
+      html += "</div>";
+    });
+    return html + "</div>";
+  }
+
   (function updateButton() {
     var info = null;
     function ensure() {
@@ -286,6 +319,15 @@
         encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
     }
 
+    function notesHtml() {
+      var notes = (info && info.releaseNotes) || [];
+      if (!notes.length) return "";
+      var n = notes.length;
+      return '<div class="acvc-update-notes-head">What’s in this update (' +
+        (n === 1 ? "1 release" : n + " releases") + '):</div>' +
+        acvcNotesListHtml(notes);
+    }
+
     function showModal() {
       if (document.getElementById("acvc-update-modal")) return;
       var overlay = document.createElement("div");
@@ -303,6 +345,7 @@
         "</b>." + behindText() +
         " Redeploying pulls the update; your data and settings are on " +
         "the volume and are kept.</div>" +
+        notesHtml() +
         '<img class="acvc-update-img" alt="Railway deployments page: the three-dot menu on the ACTIVE deployment, with Redeploy highlighted" ' +
         'src="/dashboard-plugins/ai-cyber-value-creator/dist/railway-redeploy.png">' +
         '<ol class="acvc-update-steps">' +
@@ -353,6 +396,84 @@
     }
     poll();
     setInterval(poll, 30 * 60 * 1000);           // fresh check every 30 min
+    setInterval(ensure, 2000);                   // survive React re-renders
+  })();
+
+  // -------------------------------------------------------------------------
+  // Sidebar AICVC version row — below the Nous Research footer line:
+  //   <version>    AICVC [Notes]
+  // The Notes tag opens a modal with ALL release notes, newest first, in
+  // the same scrollable panel the update modal uses.
+  // -------------------------------------------------------------------------
+  (function sidebarVersion() {
+    var data = null;   // {current, notes}
+
+    function showNotesModal() {
+      if (document.getElementById("acvc-notes-modal")) return;
+      var overlay = document.createElement("div");
+      overlay.id = "acvc-notes-modal";
+      overlay.className = "acvc-update-overlay";
+      function close() { overlay.remove(); }
+      overlay.onclick = function (e) { if (e.target === overlay) close(); };
+      var notes = (data && data.notes) || [];
+      var box = document.createElement("div");
+      box.className = "acvc-update-box";
+      box.innerHTML =
+        '<div class="acvc-update-title">📝 Release notes</div>' +
+        '<div class="acvc-update-sub">You are running <b>' +
+        acvcEsc((data && data.current) || "?") + "</b>. " +
+        (notes.length ? "Every published release, newest first:"
+          : "No published release notes are available yet.") + "</div>" +
+        (notes.length ? acvcNotesListHtml(notes)
+          .replace('class="acvc-update-notes"',
+                   'class="acvc-update-notes acvc-notes-tall"') : "");
+      var row = document.createElement("div");
+      row.className = "acvc-update-actions";
+      var closeBtn = document.createElement("button");
+      closeBtn.className = "acvc-update-cancel";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = close;
+      row.appendChild(closeBtn);
+      box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+
+    function ensure() {
+      try {
+        if (!data || !data.current) return;   // dev checkout: no version row
+        if (document.getElementById("acvc-version-row")) return;
+        var org = document.querySelector('a[href="https://nousresearch.com"]');
+        var host = org && org.parentElement;
+        if (!host || !host.parentElement) return;
+        var row = document.createElement("div");
+        row.id = "acvc-version-row";
+        row.className = "acvc-version-row";
+        var ver = document.createElement("span");
+        ver.className = "acvc-version-ver";
+        ver.textContent = data.current;
+        row.appendChild(ver);
+        var right = document.createElement("span");
+        right.className = "acvc-version-right";
+        right.appendChild(document.createTextNode("AICVC "));
+        var btn = document.createElement("button");
+        btn.className = "acvc-version-notes-btn";
+        btn.textContent = "Notes";
+        btn.title = "What changed in each release";
+        btn.onclick = function (e) { e.preventDefault(); showNotesModal(); };
+        right.appendChild(btn);
+        row.appendChild(right);
+        host.parentElement.insertBefore(row, host.nextSibling);
+      } catch (e) { /* cosmetic */ }
+    }
+
+    function poll() {
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/release-notes")
+        .then(function (d) { data = d; ensure(); })
+        .catch(function () { /* try again next poll */ });
+    }
+    poll();
+    setInterval(poll, 30 * 60 * 1000);
     setInterval(ensure, 2000);                   // survive React re-renders
   })();
 
