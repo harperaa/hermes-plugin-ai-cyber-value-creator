@@ -451,7 +451,7 @@
         row.className = "acvc-version-row";
         var ver = document.createElement("span");
         ver.className = "acvc-version-ver";
-        ver.textContent = data.current;
+        ver.textContent = "v" + data.current;
         row.appendChild(ver);
         var right = document.createElement("span");
         right.className = "acvc-version-right";
