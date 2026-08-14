@@ -454,6 +454,22 @@ def _published_release_notes() -> list:
     return notes
 
 
+def _running_version() -> str:
+    """The AICVC release this instance runs. Containers bake HPD_VERSION at
+    docker build; a dev checkout falls back to the local distribution
+    mirror's VERSION file (kept at the last published release by the daily
+    pipeline), so the sidebar label shows there too."""
+    version = (os.environ.get("HPD_VERSION") or "").strip()
+    if version:
+        return version
+    dist_dir = os.environ.get(
+        "HPD_DIST_DIR", os.path.expanduser("~/code/hermes-plugins-distribution"))
+    try:
+        return (Path(dist_dir) / "VERSION").read_text().strip()
+    except OSError:
+        return ""
+
+
 @router.get("/release-notes")
 def release_notes() -> dict:
     """All published release notes (newest first) + the running version —
@@ -461,7 +477,7 @@ def release_notes() -> dict:
     notes = list(_published_release_notes())
     notes.sort(key=lambda n: str(n.get("version") or ""), reverse=True)
     return {
-        "current": (os.environ.get("HPD_VERSION") or "").strip(),
+        "current": _running_version(),
         "notes": notes,
     }
 
