@@ -450,12 +450,18 @@
         row.id = "acvc-version-row";
         row.className = "acvc-version-row";
         var ver = document.createElement("span");
-        ver.className = "acvc-version-ver";
+        // Same typography as the host's own version label (v0.20.1): copy
+        // its live classes so the fonts can never drift apart.
+        var hostVer = host.firstElementChild;
+        ver.className = (hostVer && hostVer.className) || "acvc-version-ver";
         ver.textContent = "v" + data.current;
         row.appendChild(ver);
         var right = document.createElement("span");
         right.className = "acvc-version-right";
-        right.appendChild(document.createTextNode("AICVC "));
+        var label = document.createElement("span");
+        label.className = org.className || "";   // match "Nous Research"
+        label.textContent = "AICVC";
+        right.appendChild(label);
         var btn = document.createElement("button");
         btn.className = "acvc-version-notes-btn";
         btn.textContent = "Notes";
