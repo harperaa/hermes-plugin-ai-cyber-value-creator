@@ -239,6 +239,25 @@ ROADMAP_PHASES: tuple[PhaseDef, ...] = (
             TaskDef(
                 id="convert-nopressure",
                 title="No-Pressure Sales — Zoom, Sell by Chat, Conversion Events",
+                brief=(
+                    "Design the user's no-pressure sales motion, and build the CONVERSION "
+                    "EVENT script as the centerpiece deliverable. The event is a 90-MINUTE "
+                    "workshop with a strict two-act structure: **60 minutes of pure value** "
+                    "(teach the ICP's #1 problem from the Company Context, demonstrate the "
+                    "solution live — attendees must leave better off even if they never buy), "
+                    "then **30 minutes of offer**: walk the offer in this exact order — "
+                    "Promise, Bonuses, Guarantee, Payment options, Scarcity/Urgency — then "
+                    "open Q&A. The offer segment's content comes FROM the assembled Offer "
+                    "Doc (read it with the `offer_doc_get` tool; if none exists yet, send "
+                    "the user to `/offer` to build it first — do not improvise a parallel "
+                    "offer). Scarcity that converts without pressure: tie a BONUS to the "
+                    "room — e.g. a discount or extra bonus that EXPIRES WHEN THE SESSION "
+                    "ENDS ('this goes away when we hang up'), so the deadline is real and "
+                    "attending had tangible value. Deliverable: a run-of-show script "
+                    "(conversion-event-script.md) with timestamps, talking points per "
+                    "segment, the offer walk keyed to the Offer Doc's facets, the "
+                    "session-expiry bonus mechanics, and the Q&A close."
+                ),
                 blurb="Convert with low-pressure Zoom calls, chat selling, and conversion events.",
             ),
             TaskDef(
@@ -327,11 +346,14 @@ STEP_TOOL_HANDOFFS: dict[str, dict] = {
     },
     "convert-nopressure": {
         "page": "/offer", "name": "Offer Doc",
-        "output": "the signable offer document used to close no-pressure "
-                  "conversations (send it, they sign it)",
-        "boundary": "Design the sales conversation HERE. The artifact that "
-                    "ends it — the signable doc — comes from the Offer Doc "
-                    "tool; do not re-draft it in chat.",
+        "output": "the signable offer document — it scripts the event's "
+                  "30-minute offer segment (Promise, Bonuses, Guarantee, "
+                  "Payment options, Timing) and closes the sale afterward",
+        "boundary": "Design the sales motion and the 90-minute conversion "
+                    "event HERE (60 min value, 30 min offer + Q&A). The "
+                    "offer segment's CONTENT comes from the assembled Offer "
+                    "Doc (offer_doc_get) — never a parallel offer drafted "
+                    "in chat.",
     },
     "convert-scarcity": {
         "page": "/offer", "name": "Offer Doc",
@@ -397,6 +419,10 @@ def tool_handoff_lines(task_id: str) -> list[str]:
         "exactly what they will get there. The step is complete when the "
         "decisions are captured and the user knows where their output "
         "comes from — not when you have hand-produced a substitute in chat.",
+        f"This pointer is NOT optional: your FINAL chat message before "
+        f"completing AND the `kanban_complete` summary must BOTH contain "
+        f"the literal page path `{h['page']}` with one line on what to do "
+        f"there. A completion without the pointer is an incomplete step.",
         "",
     ]
 
