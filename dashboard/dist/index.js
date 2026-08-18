@@ -41,7 +41,8 @@
         pre: ["Community Engine"],
         items: ["Funnel Automations"] },
       { id: "convert", label: "CONVERT",
-        items: ["Sales Forge", "Waitlist Gate", "Campaign Scheduler"] },
+        // Offer Doc shipped — real /offer link renders inside the group
+        items: ["Waitlist Gate", "Campaign Scheduler"] },
       { id: "deliver", label: "DELIVER",
         pre: ["Journey Choreographer"],
         items: ["Testimonial Collector"] },
@@ -159,7 +160,10 @@
         G + ':has(#acvc-pg-attract-head:not(.acvc-pg-open)) li:has(> a[href="/shortform"]){display:none;}' +
         '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
         '#acvc-pg-nurture-items{order:-9;}' +
-        '#acvc-pg-convert-head{order:-7;}#acvc-pg-convert-items{order:-6;}' +
+        '#acvc-pg-convert-head{order:-8;}' +
+        G + ' li:has(> a[href="/offer"]){order:-7;margin-left:14px;}' +
+        '#acvc-pg-convert-items{order:-6;}' +
+        G + ':has(#acvc-pg-convert-head:not(.acvc-pg-open)) li:has(> a[href="/offer"]){display:none;}' +
         '#acvc-pg-deliver-head{order:-5;}#acvc-pg-deliver-pre{order:-4;}' +
         G + ' li:has(> a[href="/delivery"]){order:-3;margin-left:14px;}' +
         '#acvc-pg-deliver-items{order:-2;}' +

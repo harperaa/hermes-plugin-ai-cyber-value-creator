@@ -640,7 +640,8 @@ def achievements_progress() -> dict:
 # accomplishments memory note covers this.
 _ACCOMPLISH_ORDER = ["value-dashboard", "daily-brief",
                      "value-creator-level", "ai-cyber-value-creator",
-                     "shorts-lab", "youtube-insights", "delivery-kit"]
+                     "shorts-lab", "youtube-insights", "offer-doc",
+                     "delivery-kit"]
 
 
 def _sibling_progress():
