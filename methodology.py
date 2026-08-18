@@ -283,6 +283,123 @@ ROADMAP_PHASES: tuple[PhaseDef, ...] = (
 ALL_PHASES: tuple[PhaseDef, ...] = (VALUE_CREATION_PHASE, *ROADMAP_PHASES)
 ALL_TASK_IDS: list[str] = [t.id for p in ALL_PHASES for t in p.tasks]
 
+# ---------------------------------------------------------------------------
+# Tool handoffs — the platform ships dedicated tools for several steps'
+# OUTPUTS. The step coach does the thinking/strategy/decisions in chat and
+# then HANDS OFF to the tool for production: complement, never compete.
+# Maintenance rule: every time a new plugin/page ships, add (or update) the
+# handoff for the steps it serves.
+# ---------------------------------------------------------------------------
+
+STEP_TOOL_HANDOFFS: dict[str, dict] = {
+    "create-value-offers": {
+        "page": "/offer", "name": "Offer Doc",
+        "output": "the signable 1-2 page closing document (Promise, Bonuses, "
+                  "Guarantee, Payment Options, Urgency & Scarcity + a "
+                  "signature line)",
+        "boundary": "Design the offer HERE — the Hormozi neck-down, the "
+                    "One-Page Offer, the price. Do NOT draft the closing/"
+                    "agreement document in this chat: the Offer Doc tool "
+                    "builds it FROM this step's outputs (your one-pager, "
+                    "saved offers, and this very conversation).",
+    },
+    "attract-shortform": {
+        "page": "/shortform", "name": "Short Form (Ads Lab)",
+        "output": "finished ad creatives from winning ads (your face, your "
+                  "offer, funnel-stage copy, QA-checked), landing pages, and "
+                  "paused Meta ads ready to approve",
+        "boundary": "Decide the strategy HERE — audiences, angles, budget, "
+                    "which winning ads to model. Do NOT hand-write ad "
+                    "creatives or copy in this chat: the Ads Lab produces "
+                    "them with built-in QA, and its funnel stages encode "
+                    "the targeting thinking.",
+    },
+    "nurture-longform": {
+        "page": "/longform", "name": "Long Form",
+        "output": "three record-ready ICP-grounded scripts every morning "
+                  "(plus on-demand topic sets and full production: beat "
+                  "images, thumbnails, PDF)",
+        "boundary": "Decide the watering-hole strategy HERE — which "
+                    "channels to track, what the ICP needs said. Do NOT "
+                    "write video scripts in this chat: the Long Form "
+                    "pipeline writes them daily from tracked winners, "
+                    "format-linted, and produces the assets.",
+    },
+    "convert-nopressure": {
+        "page": "/offer", "name": "Offer Doc",
+        "output": "the signable offer document used to close no-pressure "
+                  "conversations (send it, they sign it)",
+        "boundary": "Design the sales conversation HERE. The artifact that "
+                    "ends it — the signable doc — comes from the Offer Doc "
+                    "tool; do not re-draft it in chat.",
+    },
+    "convert-scarcity": {
+        "page": "/offer", "name": "Offer Doc",
+        "output": "the offer's Urgency & Scarcity facet (true deadlines, "
+                  "limited spots) already encoded in the signable document",
+        "boundary": "Design the scarcity mechanics HERE (real capacity "
+                    "limits, cohort dates, wait-list rules). Encode the "
+                    "customer-facing wording via the Offer Doc's Urgency & "
+                    "Scarcity facet — one source of truth, not a parallel "
+                    "version in chat.",
+    },
+    "deliver-journey": {
+        "page": "/delivery", "name": "Delivery Kit",
+        "output": "per-client value attributions from analyzed meetings — "
+                  "the evidence layer for the journey you design",
+        "boundary": "Design the journey HERE. The Delivery Kit tracks the "
+                    "value actually delivered at each stage — point the "
+                    "user there to watch the ledger fill instead of "
+                    "hand-building tracking documents.",
+    },
+    "deliver-systemize": {
+        "page": "/delivery", "name": "Delivery Kit",
+        "output": "meeting analyses and value attributions that reveal "
+                  "which delivery activities repeat (productization "
+                  "candidates)",
+        "boundary": "Systemize HERE using the Delivery Kit's data as "
+                    "evidence — do not build a parallel meeting-notes or "
+                    "value-tracking system.",
+    },
+    "deliver-choreograph": {
+        "page": "/delivery", "name": "Delivery Kit",
+        "output": "the demonstrated-value record that tells you WHEN a "
+                  "client is primed for a testimonial or referral ask",
+        "boundary": "Choreograph the touchpoints HERE; read the timing "
+                    "signals from the Delivery Kit dashboard.",
+    },
+}
+
+
+def tool_handoff_lines(task_id: str) -> list[str]:
+    """Brief block that keeps the step coach complementary to shipped tools
+    and ends the step with a concrete pointer to the tool's output."""
+    h = STEP_TOOL_HANDOFFS.get(task_id)
+    if not h:
+        return [
+            "### Tool handoff",
+            "No dedicated platform tool ships for this step yet (planned "
+            "tools show a 'soon' pill in the sidebar). Deliver this step's "
+            "outputs as workspace files, and keep the Company Context "
+            "current — every shipped tool (Long Form, Ads Lab, Offer Doc) "
+            "reads it, so what you record here powers them all.",
+            "",
+        ]
+    return [
+        "### Tool handoff — complement the platform, never compete with it",
+        f"The platform ships a dedicated tool for this step's output: "
+        f"**{h['name']}** (`{h['page']}` in the sidebar), which produces "
+        f"{h['output']}.",
+        h["boundary"],
+        "**When this step's decisions are made and recorded, END by "
+        "pointing the user to the tool**: tell them to open "
+        f"`{h['page']}` ({h['name']}) to generate the output, and name "
+        "exactly what they will get there. The step is complete when the "
+        "decisions are captured and the user knows where their output "
+        "comes from — not when you have hand-produced a substitute in chat.",
+        "",
+    ]
+
 
 def phase_def(phase_id: str) -> PhaseDef | None:
     for p in ALL_PHASES:
@@ -483,4 +600,5 @@ def build_task_description(
         "**Do not complete this task until the deliverable file exists.**",
     ]
 
-    return "\n".join([*header, *specific, *deliverable])
+    return "\n".join([*header, *specific, *tool_handoff_lines(task.id),
+                      *deliverable])
