@@ -325,8 +325,9 @@ STEP_TOOL_HANDOFFS: dict[str, dict] = {
     "attract-shortform": {
         "page": "/shortform", "name": "Short Form (Ads Lab)",
         "output": "finished ad creatives from winning ads (your face, your "
-                  "offer, funnel-stage copy, QA-checked), landing pages, and "
-                  "paused Meta ads ready to approve",
+                  "offer, funnel-stage copy, QA-checked), landing pages, "
+                  "paused Meta ads ready to approve, and 60-second Site "
+                  "Video describer tours of any URL (Remotion-rendered)",
         "boundary": "Decide the strategy HERE — audiences, angles, budget, "
                     "which winning ads to model. Do NOT hand-write ad "
                     "creatives or copy in this chat: the Ads Lab produces "
