@@ -315,3 +315,47 @@ def test_kanban_hook_updates_progress():
     # Unknown task ids are ignored without raising.
     for cb in ctx.hooks["kanban_task_completed"]:
         cb(task_id="unknown", profile_name="default")
+
+
+def test_drift_healer_rebaselines_skipped_jobs(monkeypatch, tmp_path):
+    import importlib.util as ilu
+    import sys, types
+    from pathlib import Path
+
+    calls = []
+    jobs_mod = types.ModuleType("cron.jobs")
+    jobs_mod.list_jobs = lambda: [{"id": "j1", "name": "daily-brief"},
+                                  {"id": "j2", "name": "ok-job"}]
+    jobs_mod.update_job = lambda jid, patch: calls.append((jid, dict(patch)))
+    jobs_mod.clear_drift_alerted = lambda jid: calls.append((jid, "clear"))
+    jobs_mod.resolve_job_ref = lambda ref: None
+    execs_mod = types.ModuleType("cron.executions")
+    execs_mod.list_executions = lambda job_id, limit: (
+        [{"error": "RuntimeError: [drift_skip:silent] skipped"}]
+        if job_id == "j1" else [{"error": ""}])
+    cron_pkg = types.ModuleType("cron")
+    cron_pkg.jobs, cron_pkg.executions = jobs_mod, execs_mod
+    monkeypatch.setitem(sys.modules, "cron", cron_pkg)
+    monkeypatch.setitem(sys.modules, "cron.jobs", jobs_mod)
+    monkeypatch.setitem(sys.modules, "cron.executions", execs_mod)
+    cfg_mod = types.ModuleType("hermes_cli.config")
+    cfg_mod.load_config = lambda: {"model": {"default": "grok-4.6"}}
+    hermes_pkg = sys.modules.get("hermes_cli") or types.ModuleType("hermes_cli")
+    monkeypatch.setitem(sys.modules, "hermes_cli", hermes_pkg)
+    monkeypatch.setitem(sys.modules, "hermes_cli.config", cfg_mod)
+
+    spec = ilu.spec_from_file_location(
+        "acvc_api_drift", str(Path(__file__).resolve().parent.parent
+                              / "dashboard" / "plugin_api.py"))
+    api = ilu.module_from_spec(spec)
+    spec.loader.exec_module(api)
+    api._DRIFT_HEAL["at"] = 0.0
+    api._heal_cron_model_drift()
+    # drifted job re-baselined via pin -> unpin; healthy job untouched
+    assert ("j1", {"model": "grok-4.6"}) in calls
+    assert ("j1", {"model": None}) in calls
+    assert not any(c[0] == "j2" for c in calls)
+    # throttle: immediate second call is a no-op
+    n = len(calls)
+    api._heal_cron_model_drift()
+    assert len(calls) == n

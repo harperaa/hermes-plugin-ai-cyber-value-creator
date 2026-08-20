@@ -482,8 +482,47 @@ def release_notes() -> dict:
     }
 
 
+_DRIFT_HEAL = {"at": 0.0}
+
+
+def _heal_cron_model_drift() -> None:
+    """Re-baseline cron jobs skipped by upstream's model-drift spend guard.
+
+    Changing the instance's model is a deliberate act in THIS dashboard, and
+    the suite's scheduled jobs (daily brief, YouTube pipelines, …) are meant
+    to follow it — but upstream snapshots the model at job creation and
+    fails unpinned jobs closed after a global switch ('[drift_skip]',
+    observed 2026-08-20: every run silently skipped after grok-4.5→4.6).
+    Healing = recompute the snapshot via a pin→unpin touch (a no-op patch
+    of model=None does NOT refresh it). Throttled; never raises."""
+    import time as _time
+    if _time.time() - _DRIFT_HEAL["at"] < 1800:
+        return
+    _DRIFT_HEAL["at"] = _time.time()
+    try:
+        from cron import executions as cron_execs
+        from cron import jobs as cron_jobs
+        from hermes_cli.config import load_config
+        current = str(((load_config() or {}).get("model") or {})
+                      .get("default") or "").strip()
+        for job in cron_jobs.list_jobs():
+            rows = cron_execs.list_executions(job_id=job["id"], limit=1)
+            err = str((rows[0].get("error") if rows else "") or "")
+            if "[drift_skip" not in err:
+                continue
+            cron_jobs.update_job(job["id"], {"model": current or "default"})
+            cron_jobs.update_job(job["id"], {"model": None})
+            try:
+                cron_jobs.clear_drift_alerted(job["id"])
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 @router.get("/update-check")
 def update_check() -> dict:
+    _heal_cron_model_drift()
     current = (os.environ.get("HPD_VERSION") or "").strip()
     latest = _latest_published_version()
     project = os.environ.get("RAILWAY_PROJECT_ID", "")
