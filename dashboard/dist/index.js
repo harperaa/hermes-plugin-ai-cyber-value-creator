@@ -36,7 +36,7 @@
     // real YouTube Insights link (N2); its items stack below it.
     var PHASES = [
       { id: "attract", label: "ATTRACT",
-        items: ["Referral Ledger", "Tribe Builder"] },   // Shorts Lab shipped — real /shorts link below the stack
+        items: ["Referral Ledger", "Affiliate Desk"] },  // Shorts Lab shipped (A1) — real /shortform link renders above the stack
       { id: "nurture", label: "NURTURE",
         pre: ["Community Engine"],
         items: ["Funnel Automations"] },
@@ -155,8 +155,9 @@
         G + ' li:has(> a[href="/roadmap"]){order:-18;}' +
         // NURTURE holds YouTube Insights; its soon-items stack below the link
         G + ' li:has(> a[href="/longform"]){order:-10;margin-left:14px;}' +
-        '#acvc-pg-attract-head{order:-15;}#acvc-pg-attract-items{order:-14;}' +
-        G + ' li:has(> a[href="/shortform"]){order:-13;margin-left:14px;}' +
+        // ATTRACT: Short Form is step A1 — its real link sits ABOVE the stack
+        '#acvc-pg-attract-head{order:-15;}#acvc-pg-attract-items{order:-13;}' +
+        G + ' li:has(> a[href="/shortform"]){order:-14;margin-left:14px;}' +
         G + ':has(#acvc-pg-attract-head:not(.acvc-pg-open)) li:has(> a[href="/shortform"]){display:none;}' +
         '#acvc-pg-nurture-head{order:-12;}#acvc-pg-nurture-pre{order:-11;}' +
         '#acvc-pg-nurture-items{order:-9;}' +

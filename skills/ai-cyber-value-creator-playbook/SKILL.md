@@ -71,20 +71,26 @@ phases is the "gate" you pass through (Leads → Trust → Sales → Testimonial
 
 ### Attract — goal: Leads × day
 Put new leads on the board every day.
-1. **Build a High-Trust Referral Network (KRP).** Cultivate Key Referral
+1. **Short-Form Content.** Start by picking **ONE platform** — one you
+   actually like AND where your clients hang out: **X, Instagram, LinkedIn**,
+   TikTok, or YouTube Shorts — and focus there. Then publish daily: short-form
+   is the discovery engine, hooks come straight from the problems list (the
+   Video/Ad topics from the foundation), one video = one problem = one
+   takeaway.
+2. **Build a High-Trust Referral Network (KRP).** Cultivate Key Referral
    Partners and champions who send warm, pre-trusted leads.
-2. **YouTube Content (5+ videos).** Publish long-form value content (the
-   Video/Ad topics from the foundation) to attract leads daily.
-3. **Paid Ads.** Run paid ads at **$10–100/day**. Copy what works — study
-   competitors in the **Meta Ads Library** before writing your own.
+3. **Partners + Affiliates + Ads.** Scale reach with partner and affiliate
+   deals, then run paid ads at **$10–100/day** amplifying what already works
+   organically. Copy what works — study competitors in the **Meta Ads
+   Library** before writing your own.
 
 ### Nurture — goal: Customers × week (low ticket)
 Move higher-intent audience into a paid space and convert weekly.
 1. **Build a Community.** Build an **engaged Skool community** that fosters real
    engagement and belonging. Economics that work: **cost ~$99/mo, sell at
    ~$49/lifetime**, with a monthly offer, a library of past events, and bonuses.
-2. **Long-Form Watering-Hole Content.** Publish deep content where the audience
-   already gathers, to keep pulling them inward.
+2. **Long-Form Content — the "Watering Hole".** Publish deep content where the
+   audience already gathers, to keep pulling them inward.
 3. **Monthly Conversion Events.** Host a live event monthly — **teach one topic,
    60–90 minutes**, then **make the offer to high ticket**. This raises show
    rates and primes conversion.

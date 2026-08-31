@@ -130,13 +130,13 @@ def test_min_turn_gate_in_prompt(home, scripted):
 def test_max_turns_force_complete(home, scripted):
     queue, _ = scripted
     queue[:] = [{"reply": "Q"}]
-    coach.start("attract-tribe")
+    coach.start("attract-partners")
     for i in range(coach.MAX_TURNS - 1):
         queue[:] = [{"action": "reply", "reply": "more"}]
-        coach.answer("attract-tribe", f"a{i}")
+        coach.answer("attract-partners", f"a{i}")
     # model tries to keep replying — engine completes anyway
     queue[:] = [{"action": "reply", "reply": "one more?", "summary": ""}]
-    r = coach.answer("attract-tribe", "final")
+    r = coach.answer("attract-partners", "final")
     assert r["action"] == "complete"
 
 

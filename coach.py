@@ -69,6 +69,14 @@ GUIDANCE: dict[str, list[str]] = {
         "Completing this unlocks the flywheel laps below.",
     ],
     # ---- Attract -----------------------------------------------------------
+    "attract-shortform": [
+        "Start by picking ONE platform — one you actually like AND where your clients hang out: X, Instagram, LinkedIn, TikTok, or YouTube Shorts. Focus there; one platform done daily beats five done badly.",
+        "Short-form is the discovery engine: hooks come straight from your problems list.",
+        "One video = one problem = one takeaway. Resist teaching everything at once.",
+        "Batch production: script and record a week at a time; repurpose across platforms.",
+        "Consistency beats brilliance: a sustainable publishing rhythm you can hold for a year.",
+        "Measure leads per day, not likes; every video ends with one clear next step.",
+    ],
     "attract-referral": [
         "List every person who already trusts you and touches your ICP: past clients, peers, vendors, communities.",
         "Give first: send them leads, content, or intros before you ever ask for one.",
@@ -76,19 +84,12 @@ GUIDANCE: dict[str, list[str]] = {
         "Set a cadence — a weekly touch with 3-5 partners beats a yearly blast to fifty.",
         "Track where every warm lead comes from so you know which relationships to invest in.",
     ],
-    "attract-tribe": [
-        "Decide what tribe you LEAD — not just sell to: the transformation you stand for.",
-        "Plant a flag: a clear, repeatable point of view that attracts your ICP and repels everyone else.",
-        "Show up where the tribe already is before asking them to come to you.",
-        "Turn your solutions list into teaching moments — every problem you researched is content.",
-        "Consistency beats brilliance: a sustainable publishing rhythm you can hold for a year.",
-    ],
-    "attract-shortform": [
-        "Short-form (Reels/Shorts/TikTok) is the discovery engine: hooks come straight from your problems list.",
-        "One video = one problem = one takeaway. Resist teaching everything at once.",
-        "Batch production: script and record a week at a time; repurpose across platforms.",
+    "attract-partners": [
+        "Partners and affiliates put other people's trust to work: structure revenue-share or affiliate deals with those who already reach your ICP.",
+        "Make partners successful first — swipe copy, a landing page, a clear commission — so promoting you is the easy choice.",
         "Paid ads amplify what already works organically — never cold-start an unproven message with money.",
-        "Measure leads per day, not likes; every video ends with one clear next step.",
+        "Start ads at $10-100/day and study competitors in the Meta Ads Library before writing your own.",
+        "Measure cost per lead by channel — double down on partners and ads that pay for themselves.",
     ],
     # ---- Nurture -----------------------------------------------------------
     "nurture-community": [

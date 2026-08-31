@@ -189,19 +189,19 @@ ROADMAP_PHASES: tuple[PhaseDef, ...] = (
         gate_to_next="Leads",
         tasks=(
             TaskDef(
+                id="attract-shortform",
+                title="Short-Form Content",
+                blurb="Pick ONE platform your clients hang out on (X, Instagram, LinkedIn) and publish daily — the discovery engine that puts leads on the board.",
+            ),
+            TaskDef(
                 id="attract-referral",
                 title="Build High-Trust Referral Network",
                 blurb="Cultivate partners and champions who send warm, pre-trusted leads.",
             ),
             TaskDef(
-                id="attract-tribe",
-                title="Lead Your Tribe: Build Solutions",
-                blurb="Define the audience you lead and the problems you uniquely solve for them.",
-            ),
-            TaskDef(
-                id="attract-shortform",
-                title="Short-Form Content + Ads",
-                blurb="Run short-form content and paid ads to put leads on the board every day.",
+                id="attract-partners",
+                title="Partners + Affiliates + Ads",
+                blurb="Scale reach with partner deals, affiliates, and paid ads amplifying proven messages.",
             ),
         ),
     ),
@@ -219,7 +219,7 @@ ROADMAP_PHASES: tuple[PhaseDef, ...] = (
             ),
             TaskDef(
                 id="nurture-longform",
-                title="Long-Form Watering-Hole Content",
+                title='Long-Form Content — "Watering Hole"',
                 blurb="Publish deep long-form content where your audience already gathers.",
             ),
             TaskDef(
@@ -323,16 +323,27 @@ STEP_TOOL_HANDOFFS: dict[str, dict] = {
                     "saved offers, and this very conversation).",
     },
     "attract-shortform": {
+        "page": "/shortform", "name": "Short Form (Shorts Lab)",
+        "output": "derivative short-form scripts modeled on tracked winning "
+                  "shorts, plus 60-second Site Video describer tours of any "
+                  "URL (Remotion-rendered)",
+        "boundary": "Decide the strategy HERE — which channels and hooks, "
+                    "what problem each video teaches, the publishing "
+                    "cadence. Do NOT hand-write short-form scripts in this "
+                    "chat: the Shorts Lab derives them from tracked "
+                    "winners, format-linted.",
+    },
+    "attract-partners": {
         "page": "/shortform", "name": "Short Form (Ads Lab)",
         "output": "finished ad creatives from winning ads (your face, your "
                   "offer, funnel-stage copy, QA-checked), landing pages, "
-                  "paused Meta ads ready to approve, and 60-second Site "
-                  "Video describer tours of any URL (Remotion-rendered)",
-        "boundary": "Decide the strategy HERE — audiences, angles, budget, "
-                    "which winning ads to model. Do NOT hand-write ad "
-                    "creatives or copy in this chat: the Ads Lab produces "
-                    "them with built-in QA, and its funnel stages encode "
-                    "the targeting thinking.",
+                  "and paused Meta ads ready to approve",
+        "boundary": "Decide the strategy HERE — partner and affiliate "
+                    "deals, audiences, angles, budget, which winning ads "
+                    "to model. Do NOT hand-write ad creatives or copy in "
+                    "this chat: the Ads Lab produces them with built-in "
+                    "QA, and its funnel stages encode the targeting "
+                    "thinking.",
     },
     "nurture-longform": {
         "page": "/longform", "name": "Long Form",
