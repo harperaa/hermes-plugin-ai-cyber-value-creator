@@ -297,7 +297,10 @@ def process_diagram():
     png = _PLUGIN_ROOT / "assets" / "process-diagram.png"
     if FileResponse is None or not png.exists():
         raise HTTPException(status_code=404, detail="diagram not found")
-    return FileResponse(str(png), media_type="image/png")
+    # no-cache: browsers heuristically cache image responses without it,
+    # which kept serving a stale diagram after the asset was replaced
+    return FileResponse(str(png), media_type="image/png",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/setup-status")

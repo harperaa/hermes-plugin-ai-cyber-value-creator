@@ -1946,7 +1946,9 @@
     }, []);
     useEffect(function () {
       var revoke = null;
-      SDK.authedFetch(API + "/process-diagram")
+      // cache-buster: outlive any stale heuristically-cached copy from
+      // before the endpoint sent Cache-Control
+      SDK.authedFetch(API + "/process-diagram?v=" + Date.now())
         .then(function (r) { return r.ok ? r.blob() : null; })
         .then(function (b) {
           if (b) { revoke = URL.createObjectURL(b); setUrl(revoke); }
