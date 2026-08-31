@@ -191,7 +191,7 @@ ROADMAP_PHASES: tuple[PhaseDef, ...] = (
             TaskDef(
                 id="attract-shortform",
                 title="Short-Form Content",
-                blurb="Pick ONE platform your clients hang out on (X, Instagram, LinkedIn) and publish daily — the discovery engine that puts leads on the board.",
+                blurb="Pick ONE platform your clients hang out on (X, Instagram, LinkedIn) and publish daily.",
             ),
             TaskDef(
                 id="attract-referral",
