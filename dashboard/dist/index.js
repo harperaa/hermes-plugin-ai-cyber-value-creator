@@ -49,11 +49,32 @@
     ];
     function ensure() {
       try {
-        if (document.getElementById("acvc-pg-attract-head")) return;
         var G = document.querySelector('div[aria-labelledby="hermes-sidebar-plugin-nav-heading"]');
         if (!G) return;
         var ul = G.querySelector("ul");
         if (!ul) return;
+        // Brand header: one clickable line that collapses the ENTIRE
+        // AI Cyber Value Creator section (links + phase groups).
+        if (!document.getElementById("acvc-brand-head")) {
+          var brandOpen = true;
+          try { brandOpen = localStorage.getItem("acvc-brand") !== "0"; } catch (e) {}
+          var bLi = document.createElement("li");
+          bLi.id = "acvc-brand-head";
+          bLi.className = "acvc-brand-holder" + (brandOpen ? " acvc-brand-open" : "");
+          var bBtn = document.createElement("button");
+          bBtn.type = "button";
+          bBtn.className = "acvc-brand-btn";
+          bBtn.title = "Collapse / expand the AI Cyber Value Creator menu";
+          bBtn.innerHTML = '<span class="acvc-pg-chev">\u25b6</span>AI CYBER VALUE CREATOR\u2122';
+          bLi.appendChild(bBtn);
+          bBtn.onclick = function () {
+            var nowOpen = !bLi.classList.contains("acvc-brand-open");
+            bLi.classList.toggle("acvc-brand-open", nowOpen);
+            try { localStorage.setItem("acvc-brand", nowOpen ? "1" : "0"); } catch (e) {}
+          };
+          ul.insertBefore(bLi, ul.firstChild);
+        }
+        if (document.getElementById("acvc-pg-attract-head")) return;
         PHASES.forEach(function (p) {
           var id = p.id, label = p.label;
           var open = true;
@@ -169,6 +190,24 @@
         G + ' li:has(> a[href="/delivery"]){order:-3;margin-left:14px;}' +
         '#acvc-pg-deliver-items{order:-2;}' +
         G + ':has(#acvc-pg-deliver-head:not(.acvc-pg-open)) li:has(> a[href="/delivery"]){display:none;}' +
+        '#acvc-brand-head{order:-30;}' +
+        '.acvc-brand-holder{list-style:none;margin:0;padding:0;}' +
+        '.acvc-brand-btn{display:flex;align-items:center;gap:6px;width:100%;' +
+        'background:none;border:none;cursor:pointer;text-align:left;' +
+        'padding:10px 20px 4px;font-size:11px;letter-spacing:0.12em;font-weight:600;' +
+        'color:var(--color-muted-foreground,#9aa0b4);font-family:inherit;}' +
+        '.acvc-brand-btn:hover{color:currentColor;}' +
+        '.acvc-brand-open .acvc-pg-chev{transform:rotate(90deg);}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/metrics"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/brief"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/level"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/roadmap"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/shortform"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/longform"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/offer"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) li:has(> a[href="/delivery"]){display:none;}' +
+        G + ':not(:has(> span[class~="lg:hidden"])):has(#acvc-brand-head:not(.acvc-brand-open)) .acvc-pg-holder{display:none !important;}' +
+        G + ':has(> span[class~="lg:hidden"]) .acvc-brand-holder{display:none;}' +
         '.acvc-pg-holder{list-style:none;margin:0;padding:0;}' +
         // collapsing NURTURE hides its nested real link (pure CSS via :has)
         G + ':has(#acvc-pg-nurture-head:not(.acvc-pg-open)) li:has(> a[href="/longform"]){display:none;}' +
@@ -189,11 +228,8 @@
         '.acvc-pg-soon{flex-shrink:0;font-size:9px;letter-spacing:0.08em;' +
         'text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:999px;' +
         'border:1px solid color-mix(in srgb, currentColor 35%, transparent);}' +
-        G + ' li:has(> a[href="/level"])::before{content:"AI CYBER VALUE CREATOR™";}' +
-        G + ':not(:has(a[href="/level"])) li:has(> a[href="/roadmap"])::before{content:"AI CYBER VALUE CREATOR™";}' +
         G + ' li:has(> a[href="/kanban"])::before{content:"HERMES PLUGINS";}' +
-        G + ' li:has(> a[href="/level"])::before,' +
-        G + ' li:has(> a[href="/roadmap"])::before,' + G + ' li:has(> a[href="/kanban"])::before{' +
+        G + ' li:has(> a[href="/kanban"])::before{' +
         'display:block;padding:10px 20px 4px;font-size:11px;letter-spacing:0.12em;' +
         'font-weight:600;color:var(--color-muted-foreground,#9aa0b4);}' +
         // Collapsed sidebar (heading carries lg:hidden): no room for labels.
