@@ -192,9 +192,10 @@
         G + ':has(#acvc-pg-deliver-head:not(.acvc-pg-open)) li:has(> a[href="/delivery"]){display:none;}' +
         '#acvc-brand-head{order:-30;}' +
         '.acvc-brand-holder{list-style:none;margin:0;padding:0;}' +
-        '.acvc-brand-btn{display:flex;align-items:center;gap:6px;width:100%;' +
+        '.acvc-brand-btn{display:flex;align-items:center;gap:5px;width:100%;' +
         'background:none;border:none;cursor:pointer;text-align:left;' +
-        'padding:10px 20px 4px;font-size:11px;letter-spacing:0.12em;font-weight:600;' +
+        'white-space:nowrap;overflow:hidden;' +
+        'padding:10px 12px 4px;font-size:10px;letter-spacing:0.06em;font-weight:600;' +
         'color:var(--color-muted-foreground,#9aa0b4);font-family:inherit;}' +
         '.acvc-brand-btn:hover{color:currentColor;}' +
         '.acvc-brand-open .acvc-pg-chev{transform:rotate(90deg);}' +
