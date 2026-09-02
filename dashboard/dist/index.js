@@ -195,7 +195,7 @@
         '.acvc-brand-btn{display:flex;align-items:center;gap:5px;width:100%;' +
         'background:none;border:none;cursor:pointer;text-align:left;' +
         'white-space:nowrap;overflow:hidden;' +
-        'padding:10px 12px 4px;font-size:10px;letter-spacing:0.06em;font-weight:600;' +
+        'padding:10px 12px 4px;font-size:11px;letter-spacing:0.12em;font-weight:600;' +
         'color:var(--color-muted-foreground,#9aa0b4);font-family:inherit;}' +
         '.acvc-brand-btn:hover{color:currentColor;}' +
         '.acvc-brand-open .acvc-pg-chev{transform:rotate(90deg);}' +
