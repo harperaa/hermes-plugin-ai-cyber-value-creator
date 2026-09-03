@@ -442,6 +442,84 @@
   })();
 
   // -------------------------------------------------------------------------
+  // Failed-job toast — a scheduled job whose LAST run failed shows a red pill
+  // in the header (same slot/pattern as the update button). Silent success
+  // and silent failure must never look alike. Dismiss is per (job, run).
+  // -------------------------------------------------------------------------
+  (function () {
+    var failed = [];
+    var KEY = "acvc-cron-fail-dismissed";
+    function dismissed() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+    }
+    function isFailed(j) {
+      var st = String(j.last_status || j.lastStatus || "").toLowerCase();
+      return /fail|error/.test(st);
+    }
+    function ensure() {
+      try {
+        var old = document.getElementById("acvc-cron-fail-btn");
+        var live = failed.filter(function (j) {
+          return dismissed()[j.id] !== String(j.last_run_at || j.lastRunAt || "");
+        });
+        if (!live.length) { if (old) old.remove(); return; }
+        if (old) return;
+        var headers = [].slice.call(document.querySelectorAll("header"));
+        var bar = headers.filter(function (x) {
+          return !/lg:hidden/.test(String(x.className));
+        })[0] || headers[0];
+        if (!bar) return;
+        var j = live[0];
+        var a = document.createElement("a");
+        a.id = "acvc-cron-fail-btn";
+        a.href = "/cron";
+        var err = String(j.last_error || j.lastError || "").slice(0, 160);
+        a.title = "Last run of '" + (j.name || j.id) + "' FAILED" +
+          (err ? ": " + err : "") + ". Click to open the Cron tab. (x dismisses)";
+        a.innerHTML = "⚠ Scheduled job failed: " + acvcEsc(j.name || j.id) +
+          (live.length > 1 ? " (+" + (live.length - 1) + " more)" : "") +
+          ' <span id="acvc-cron-fail-x" style="margin-left:8px;opacity:.8">✕</span>';
+        a.onclick = function (e) {
+          if (e.target && e.target.id === "acvc-cron-fail-x") {
+            e.preventDefault();
+            var d = dismissed();
+            live.forEach(function (x) { d[x.id] = String(x.last_run_at || x.lastRunAt || ""); });
+            try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (err2) {}
+            a.remove();
+            return;
+          }
+          e.preventDefault(); window.location.assign("/cron");
+        };
+        a.style.cssText =
+          "margin-left:auto;margin-right:18px;flex-shrink:0;font-size:12px;font-weight:700;" +
+          "letter-spacing:0.04em;padding:4px 12px;border-radius:999px;" +
+          "text-decoration:none;color:#3b0a0a;cursor:pointer;" +
+          "background:linear-gradient(120deg,#f87171,#fca5a5);" +
+          "box-shadow:0 0 12px rgba(248,113,113,0.5);";
+        var up = document.getElementById("acvc-update-btn");
+        if (up) up.style.marginLeft = "12px";   // both pills: failure first
+        bar.style.display = "flex";
+        bar.style.alignItems = "center";
+        bar.appendChild(a);
+      } catch (e) { /* cosmetic */ }
+    }
+    function poll() {
+      SDK.fetchJSON("/api/cron/jobs")
+        .then(function (d) {
+          var jobs = Array.isArray(d) ? d : ((d && (d.jobs || d.items)) || []);
+          failed = jobs.filter(function (j) { return j && isFailed(j); });
+          var old = document.getElementById("acvc-cron-fail-btn");
+          if (old) old.remove();
+          ensure();
+        })
+        .catch(function () { /* next poll */ });
+    }
+    poll();
+    setInterval(poll, 60 * 1000);
+    setInterval(ensure, 2000);
+  })();
+
+  // -------------------------------------------------------------------------
   // Sidebar AICVC version row — below the Nous Research footer line:
   //   <version>    AICVC [Notes]
   // The Notes tag opens a modal with ALL release notes, newest first, in
