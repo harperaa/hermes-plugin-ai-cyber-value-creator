@@ -882,3 +882,16 @@
 .acvc-pa-flash-err { color: #ef4444; }
 .acvc-pa-upstream { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.55; margin: 16px 0 6px; }
 @media (min-width: 900px) { .acvc-pa-list { grid-template-columns: 1fr; } }
+.acvc-pa-cfg-row { display: flex; gap: 8px; align-items: center; }
+.acvc-pa-cfg-row input { flex: 1; }
+.acvc-pa-hint { font-size: 12px; opacity: 0.7; margin: -2px 0 2px; }
+.acvc-pa-editor { margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, currentColor 5%, transparent); border: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.acvc-pa-editor-head { font-size: 12.5px; margin-bottom: 6px; }
+.acvc-pa-new { color: #f59e0b; font-weight: 600; }
+.acvc-pa-file { width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; color: inherit; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); resize: vertical; white-space: pre; overflow: auto; }
+.acvc-pa-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.acvc-pa-chip { font: inherit; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; cursor: pointer; color: inherit; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); }
+.acvc-pa-chip-on { border-color: #34d399; background: color-mix(in srgb, #34d399 20%, transparent); }
+.acvc-pa-chip-new { border-style: dashed; opacity: 0.85; }
+.acvc-pa-newfile { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
+.acvc-pa-newfile input { font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 8px; width: 150px; color: inherit; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }

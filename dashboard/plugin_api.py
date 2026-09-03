@@ -639,6 +639,28 @@ def automation_schedule(name: str, body: AutomationScheduleBody) -> dict:
     return result
 
 
+class AutomationFileBody(BaseModel):
+    path: str = ""
+    content: str = ""
+
+
+@router.get("/automation/file")
+def automation_file_read(path: str = "") -> dict:
+    """A blueprint's input file (content) or folder (listing), confined to $HOME."""
+    try:
+        return _automation().read_input(path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/automation/file")
+def automation_file_write(body: AutomationFileBody) -> dict:
+    try:
+        return _automation().write_input(body.path, body.content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post("/automation/blueprints/{name}/unschedule")
 def automation_unschedule(name: str) -> dict:
     result = _automation().unschedule_blueprint(name)

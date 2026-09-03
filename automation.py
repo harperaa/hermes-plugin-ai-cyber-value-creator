@@ -33,6 +33,73 @@ CURRICULUM = [
 JOB_PREFIX = "blueprint:"
 _DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
+# The input files each blueprint reads, with the example content the workshop
+# ships. ``kind`` is "file" (one editable file) or "dir" (a folder of files;
+# ``files`` are the starter files). Anything else is a plain value.
+_T_RENEWALS = (
+    "name,date,lead_days,note\n"
+    "Passport,2027-03-23,270,\"6 months validity needed for Asia\"\n"
+    "Car insurance,2026-10-08,21,\"quotes are cheapest ~3 weeks out\"\n"
+    "Domain example.com,2026-12-01,30,\"auto-renews at full price\"\n"
+)
+_T_WATCHLIST = (
+    "type | label | url | threshold | notes\n"
+    "price | Standing desk | https://example.com/desk | 320 | alert when at or below 320\n"
+    "stock | Concert tickets | https://example.com/tickets | in stock | any availability\n"
+    "protect | Headphones price protection | https://example.com/order/123 | 2026-10-01 | claim window closes\n"
+)
+_T_PURCHASES = (
+    "| Item | Bought | Return window | Warranty | Notes |\n"
+    "|---|---|---|---|---|\n"
+    "| Wireless headphones | 2026-09-01 | 30 days | 2 years | Best Buy |\n"
+    "| Streaming trial | 2026-09-10 | 14 days | - | cancel before it converts |\n"
+)
+_T_INVENTORY = (
+    "chicken thighs — 1 lb — 2026-09-08\n"
+    "spinach — 1 bag — 2026-09-04\n"
+    "eggs — 6 — 2026-09-23\n"
+    "rice — 2 lb — 2027-01-01\n"
+)
+_T_PREFERENCES = "No shellfish. Have an oven and a wok. Two vegetarian dinners a week. Weeknight dinners under 40 minutes.\n"
+_T_COMMITMENTS = "- [ ] send proposal | Sam | 2026-09-08 | email\n- [ ] return the drill | Priya | 2026-09-12 | in person\n"
+_T_CALENDAR = "09:00 team standup; 14:00 dentist\n"
+_T_PERSON = (
+    "---\n"
+    "name: Sam Okafor\n"
+    "birthday: 1988-09-13\n"
+    "last_contact: 2026-03-01\n"
+    "---\n"
+    "- 2026-03-01 — Called. New job at a logistics startup. Nervous about managing people.\n"
+    "- 2026-01-14 — Mentioned wanting a proper chef's knife. Owns none.\n"
+)
+
+INPUT_FILES: Dict[str, Dict[str, Any]] = {
+    "expiry_desk.renewals_path": {"kind": "file", "files": [{"name": "", "template": _T_RENEWALS}],
+                                  "hint": "CSV: name, date (YYYY-MM-DD), lead_days, note"},
+    "money_watch.watchlist_path": {"kind": "file", "files": [{"name": "", "template": _T_WATCHLIST}],
+                                   "hint": "one row per thing to watch: type (price | stock | protect), label, url, threshold, notes"},
+    "return_desk.ledger_path": {"kind": "file", "files": [{"name": "", "template": _T_PURCHASES}],
+                                "hint": "markdown table: Item, Bought (YYYY-MM-DD), Return window, Warranty, Notes"},
+    "sunday_kitchen.inventory_path": {"kind": "file", "files": [{"name": "", "template": _T_INVENTORY}],
+                                      "hint": "one line per item: name — quantity — use-by date"},
+    "sunday_kitchen.preferences_path": {"kind": "file", "files": [{"name": "", "template": _T_PREFERENCES}],
+                                        "hint": "plain sentences: allergies, equipment, how many vegetarian nights, time limits"},
+    "quiet_inbox.commitments_path": {"kind": "file", "files": [{"name": "", "template": _T_COMMITMENTS}],
+                                     "hint": "one line per promise: - [ ] what | to whom | by when | channel"},
+    "morning_standup.ledger_path": {"kind": "dir", "files": [{"name": "commitments.md", "template": _T_COMMITMENTS},
+                                                            {"name": "today-calendar.md", "template": _T_CALENDAR}],
+                                    "hint": "a folder other jobs drop files into; today-calendar.md and commitments.md are the ones it reads first"},
+    "quiet_inbox.drafts_path": {"kind": "dir", "files": [],
+                                "hint": "the job writes draft replies here as separate files; nothing to prepare"},
+    "people_file.vault_path": {"kind": "dir", "files": [{"name": "people/sam-okafor.md", "template": _T_PERSON}],
+                               "hint": "one markdown file per person under people/, with name, birthday and last_contact in the front matter"},
+    "sunday_ledger.vault_path": {"kind": "dir", "files": [{"name": "renewals.csv", "template": _T_RENEWALS},
+                                                         {"name": "purchases.md", "template": _T_PURCHASES},
+                                                         {"name": "ledger/commitments.md", "template": _T_COMMITMENTS},
+                                                         {"name": "people/sam-okafor.md", "template": _T_PERSON}],
+                                 "hint": "the whole life folder: renewals.csv, purchases.md, ledger/commitments.md, people/"},
+}
+
 
 # ---------------------------------------------------------------------------
 # Hermes' own blueprint helpers, loaded by path: this plugin ships a
@@ -131,12 +198,16 @@ def _parse_skill(path: Path) -> Optional[Dict[str, Any]]:
         key = str(c["key"])
         default = "" if c.get("default") is None else str(c.get("default"))
         current = _config_current(key)
+        meta = INPUT_FILES.get(key)
         fields.append({
             "key": key,
             "label": str(c.get("prompt") or c.get("description") or key),
             "description": str(c.get("description") or ""),
             "default": default,
             "value": current if current is not None else default,
+            "kind": (meta or {}).get("kind", "value"),
+            "hint": (meta or {}).get("hint", ""),
+            "files": list((meta or {}).get("files", [])),
         })
     name = str(fm.get("name") or spec.skill_name or path.parent.name)
     return {
@@ -399,3 +470,81 @@ def _mark_suggestion(name: str, status: str) -> None:
         cs._set_status(sug["id"], status)
     except Exception:
         logger.debug("could not mark suggestion %s as %s", name, status, exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# input files — read/write the files a blueprint reads, from the form
+# ---------------------------------------------------------------------------
+
+MAX_FILE_BYTES = 512 * 1024
+
+
+def _safe_path(raw: str) -> Path:
+    """Expand and confine a user-supplied path to the home directory,
+    keeping Hermes' own state and SSH material off limits."""
+    raw = str(raw or "").strip()
+    if not raw:
+        raise ValueError("a path is required")
+    home = Path.home().resolve()
+    p = Path(raw).expanduser()
+    if not p.is_absolute():
+        p = home / p
+    p = p.resolve()
+    if p != home and home not in p.parents:
+        raise ValueError("only files under your home folder can be edited here")
+    for forbidden in (".hermes", ".ssh", ".gnupg", ".aws", ".config"):
+        if (home / forbidden) == p or (home / forbidden) in p.parents:
+            raise ValueError(f"~/{forbidden} is not editable from here")
+    return p
+
+
+def read_input(path: str) -> Dict[str, Any]:
+    """Describe a file (content) or a folder (its files) at ``path``."""
+    p = _safe_path(path)
+    out: Dict[str, Any] = {"path": str(p), "display": _display(p), "exists": p.exists()}
+    if p.is_dir():
+        entries = []
+        for child in sorted(p.rglob("*")):
+            if child.is_file() and not child.name.startswith("."):
+                rel = child.relative_to(p).as_posix()
+                if rel.count("/") > 2:
+                    continue
+                try:
+                    st = child.stat()
+                    entries.append({"name": rel, "size": st.st_size, "mtime": st.st_mtime})
+                except OSError:
+                    continue
+        out.update({"kind": "dir", "files": entries[:200]})
+        return out
+    out["kind"] = "file"
+    if p.exists():
+        try:
+            raw = p.read_bytes()
+        except OSError as exc:
+            raise ValueError(f"cannot read {p.name}: {exc}")
+        out["truncated"] = len(raw) > MAX_FILE_BYTES
+        out["content"] = raw[:MAX_FILE_BYTES].decode("utf-8", errors="replace")
+    else:
+        out["content"] = ""
+    return out
+
+
+def write_input(path: str, content: str) -> Dict[str, Any]:
+    p = _safe_path(path)
+    if p.is_dir():
+        raise ValueError(f"{_display(p)} is a folder — pick a file inside it")
+    data = str(content or "")
+    if len(data.encode("utf-8")) > MAX_FILE_BYTES:
+        raise ValueError("file is too large to save from here (512KB limit)")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(data, encoding="utf-8")
+    tmp.replace(p)
+    return {"ok": True, "path": str(p), "display": _display(p), "bytes": len(data.encode("utf-8"))}
+
+
+def _display(p: Path) -> str:
+    try:
+        return "~/" + p.resolve().relative_to(Path.home().resolve()).as_posix()
+    except ValueError:
+        return str(p)

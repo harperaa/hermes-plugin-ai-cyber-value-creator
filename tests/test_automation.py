@@ -166,3 +166,51 @@ def test_schedule_validation(home, monkeypatch):
     r = automation.schedule_blueprint("money-watch")
     assert r["ok"] and r["entry"]["job"]["scheduleHuman"] == "every 4 hours"
     assert r["entry"]["job"]["prompt"] == "Watch prices."
+
+
+def test_config_fields_carry_file_kind_and_templates(home):
+    _skill(home, "money-watch-x", schedule="0 */4 * * *", prompt="w", level=3,
+           config=[{"key": "money_watch.watchlist_path", "default": "~/life/watchlist.md",
+                    "prompt": "Watchlist file"}])
+    e = [x for x in automation.list_blueprints()["entries"] if x["name"] == "money-watch-x"][0]
+    f = e["config"][0]
+    assert f["kind"] == "file" and f["files"][0]["name"] == ""
+    assert f["files"][0]["template"].startswith("type | label | url | threshold | notes")
+    assert "price | stock | protect" in f["hint"]
+    # every declared input-file key of the collection is either a file or a folder
+    for key, meta in automation.INPUT_FILES.items():
+        assert meta["kind"] in ("file", "dir"), key
+        for spec in meta["files"]:
+            assert isinstance(spec["template"], str) and spec["template"].strip(), (key, spec)
+
+
+def test_input_files_round_trip_confined_to_home(home, monkeypatch, tmp_path):
+    fake_home = tmp_path / "home"; fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    # missing file: reads as empty, non-existent
+    r = automation.read_input("~/life/watchlist.md")
+    assert r["kind"] == "file" and r["exists"] is False and r["content"] == ""
+    assert r["display"] == "~/life/watchlist.md"
+    # write creates parents and persists
+    w = automation.write_input("~/life/watchlist.md", "type | label\nprice | Desk\n")
+    assert w["ok"] and (fake_home / "life" / "watchlist.md").read_text() == "type | label\nprice | Desk\n"
+    r2 = automation.read_input("~/life/watchlist.md")
+    assert r2["exists"] and r2["content"].startswith("type | label")
+    # folders list their files (relative names, nested one or two levels)
+    automation.write_input("~/life/people/sam.md", "---\nname: Sam\n---\n")
+    d = automation.read_input("~/life")
+    assert d["kind"] == "dir" and {f["name"] for f in d["files"]} == {"watchlist.md", "people/sam.md"}
+    # confinement
+    with pytest.raises(ValueError):
+        automation.read_input("/etc/passwd")
+    with pytest.raises(ValueError):
+        automation.read_input("~/../../etc/passwd")
+    with pytest.raises(ValueError):
+        automation.write_input("~/.hermes/config.yaml", "x")
+    with pytest.raises(ValueError):
+        automation.read_input("~/.ssh/id_ed25519")
+    with pytest.raises(ValueError):
+        automation.write_input("~/life", "x")          # a folder, not a file
+    with pytest.raises(ValueError):
+        automation.write_input("~/life/big.md", "x" * (automation.MAX_FILE_BYTES + 1))

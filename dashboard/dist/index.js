@@ -1251,7 +1251,9 @@
     var drafts = {};    // name -> form state, survives re-injection
     var busy = {};      // name -> "scheduling" | "removing" | "running"
     var flash = {};     // name -> {kind, text}
+    var editors = {};   // name + "|" + key -> {open, file (relative name for folders), loading, info, text, dirty, msg}
     var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var API_FILE = "/api/plugins/ai-cyber-value-creator/automation/file";
 
     function esc(v) {
       return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -1392,8 +1394,17 @@
       if (e.config && e.config.length) {
         html += '<div class="acvc-pa-cfg"><div class="acvc-pa-cfg-title">Settings for this skill</div>';
         e.config.forEach(function (c) {
+          var val = d.config[c.key] != null ? d.config[c.key] : c.value;
+          var isFs = c.kind === "file" || c.kind === "dir";
+          html += '<div class="acvc-pa-cfg-item" data-key="' + esc(c.key) + '">';
           html += '<label>' + esc(c.label) + (c.description && c.description !== c.label ? ' <span class="acvc-pa-muted">' + esc(c.description) + "</span>" : "") +
-            '<input type="text" data-cfg="' + esc(c.key) + '" value="' + esc(d.config[c.key] != null ? d.config[c.key] : c.value) + '" placeholder="' + esc(c.default) + '"></label>';
+            '<div class="acvc-pa-cfg-row"><input type="text" data-cfg="' + esc(c.key) + '" value="' + esc(val) + '" placeholder="' + esc(c.default) + '">' +
+            (isFs ? '<button type="button" class="acvc-pa-btn" data-act="edit-file" data-key="' + esc(c.key) + '">' +
+              (edState(e.name, c.key).open ? "Hide" : c.kind === "dir" ? "Open folder" : "Edit file") + "</button>" : "") +
+            "</div></label>";
+          if (c.hint) html += '<div class="acvc-pa-hint">' + esc(c.hint) + "</div>";
+          if (isFs && edState(e.name, c.key).open) html += editor(e, c, val);
+          html += "</div>";
         });
         html += "</div>";
       }
@@ -1409,6 +1420,129 @@
       if (flash[e.name]) html += '<span class="acvc-pa-flash acvc-pa-flash-' + flash[e.name].kind + '">' + esc(flash[e.name].text) + "</span>";
       html += "</div></div>";
       return html;
+    }
+    function edState(name, key) {
+      var k = name + "|" + key;
+      if (!editors[k]) editors[k] = { open: false, file: "", loading: false, info: null, text: "", dirty: false, msg: null };
+      return editors[k];
+    }
+    function joinPath(base, rel) {
+      base = String(base || "").replace(/\/+$/, "");
+      return rel ? base + "/" + rel : base;
+    }
+    function templateFor(c, rel) {
+      var files = c.files || [];
+      for (var i = 0; i < files.length; i++) if ((files[i].name || "") === (rel || "")) return files[i].template || "";
+      return "";
+    }
+    function editor(e, c, base) {
+      var st = edState(e.name, c.key);
+      var html = '<div class="acvc-pa-editor" data-key="' + esc(c.key) + '">';
+      if (st.loading && !st.info) return html + '<div class="acvc-pa-muted">Loading…</div></div>';
+      if (st.msg && st.msg.kind === "err" && !st.info) return html + '<div class="acvc-pa-flash-err">' + esc(st.msg.text) + "</div></div>";
+      var info = st.info || {};
+      if (c.kind === "dir") {
+        // folder: chips for existing files + starters we can create + new file
+        var existing = (info.files || []).map(function (f) { return f.name; });
+        var starters = (c.files || []).map(function (f) { return f.name; }).filter(function (n) { return existing.indexOf(n) === -1; });
+        html += '<div class="acvc-pa-editor-head"><b>' + esc(info.display || base) + "</b>" +
+          (info.exists ? ' <span class="acvc-pa-muted">' + existing.length + (existing.length === 1 ? " file" : " files") + "</span>"
+            : ' <span class="acvc-pa-muted">not created yet</span>') + "</div>";
+        html += '<div class="acvc-pa-chips">';
+        existing.forEach(function (n) {
+          html += '<button type="button" class="acvc-pa-chip' + (st.file === n ? " acvc-pa-chip-on" : "") + '" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '">' + esc(n) + "</button>";
+        });
+        starters.forEach(function (n) {
+          html += '<button type="button" class="acvc-pa-chip acvc-pa-chip-new" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '" title="Not there yet — opens with our example">' + esc(n) + " ＋</button>";
+        });
+        html += '<span class="acvc-pa-newfile"><input type="text" placeholder="new-file.md" data-newfile="' + esc(c.key) + '">' +
+          '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="new-file" data-key="' + esc(c.key) + '">Add</button></span>';
+        html += "</div>";
+        if (!st.file) return html + '<div class="acvc-pa-muted">Pick a file to edit' + (starters.length ? ", or one of the suggested starters" : "") + ".</div></div>";
+      }
+      var full = c.kind === "dir" ? joinPath(base, st.file) : base;
+      if (st.fileLoading) return html + '<div class="acvc-pa-editor-head"><b>' + esc(full) + '</b> <span class="acvc-pa-muted">loading…</span></div></div>';
+      var fileInfo = st.fileInfo || {};
+      html += '<div class="acvc-pa-editor-head"><b>' + esc(fileInfo.display || full) + "</b> " +
+        (st.fileLoading ? '<span class="acvc-pa-muted">loading…</span>'
+          : fileInfo.exists ? '<span class="acvc-pa-muted">' + (st.dirty ? "edited — not saved" : "saved on disk") + "</span>"
+            : '<span class="acvc-pa-new">not created yet — this starts from our example; Save creates it</span>') + "</div>";
+      html += '<textarea class="acvc-pa-file" data-file-editor="' + esc(c.key) + '" rows="' + Math.min(18, Math.max(6, (st.text || "").split("\n").length + 1)) + '" spellcheck="false">' + esc(st.text) + "</textarea>";
+      html += '<div class="acvc-pa-actions"><button type="button" class="acvc-pa-btn acvc-pa-go" data-act="save-file" data-key="' + esc(c.key) + '"' + (st.saving ? " disabled" : "") + ">" + (st.saving ? "Saving…" : "Save file") + "</button>" +
+        (templateFor(c, c.kind === "dir" ? st.file : "") ? '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="reset-file" data-key="' + esc(c.key) + '">Reset to example</button>' : "") +
+        (st.msg ? '<span class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + '">' + esc(st.msg.text) + "</span>" : "") + "</div>";
+      return html + "</div>";
+    }
+    function cfgFor(name, key) {
+      var e = entryByName(name);
+      return e && (e.config || []).filter(function (c) { return c.key === key; })[0];
+    }
+    function basePath(name, key) {
+      readForm(name);
+      var d = drafts[name];
+      var c = cfgFor(name, key);
+      return (d && d.config[key]) || (c && (c.value || c.default)) || "";
+    }
+    function loadFolder(name, key) {
+      var st = edState(name, key);
+      st.loading = true; st.info = null; rerender();
+      SDK.fetchJSON(API_FILE + "?path=" + encodeURIComponent(basePath(name, key)))
+        .then(function (info) { st.loading = false; st.info = info; st.msg = null; rerender(); })
+        .catch(function (err) { st.loading = false; st.msg = { kind: "err", text: errText(err) }; rerender(); });
+    }
+    function loadFile(name, key, rel) {
+      var st = edState(name, key);
+      var c = cfgFor(name, key);
+      var full = c && c.kind === "dir" ? joinPath(basePath(name, key), rel) : basePath(name, key);
+      st.file = rel || ""; st.fileLoading = true; st.dirty = false; st.msg = null; rerender();
+      SDK.fetchJSON(API_FILE + "?path=" + encodeURIComponent(full))
+        .then(function (info) {
+          st.fileLoading = false; st.fileInfo = info;
+          st.text = info.exists ? (info.content || "") : templateFor(c, c.kind === "dir" ? rel : "");
+          rerender();
+        })
+        .catch(function (err) { st.fileLoading = false; st.msg = { kind: "err", text: errText(err) }; rerender(); });
+    }
+    function saveFile(name, key) {
+      var st = edState(name, key);
+      var c = cfgFor(name, key);
+      var ta = document.querySelector('#' + WID + ' [data-file-editor="' + key + '"]');
+      if (ta) st.text = ta.value;
+      var full = c && c.kind === "dir" ? joinPath(basePath(name, key), st.file) : basePath(name, key);
+      st.saving = true; rerender();
+      SDK.fetchJSON(API_FILE, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: full, content: st.text }) })
+        .then(function (r) {
+          st.saving = false; st.dirty = false; st.fileInfo = Object.assign({}, st.fileInfo || {}, { exists: true, display: r.display });
+          st.msg = { kind: "ok", text: "Saved " + (r.display || "") };
+          if (c && c.kind === "dir") {
+            // refresh the folder listing so the new file shows as a chip
+            SDK.fetchJSON(API_FILE + "?path=" + encodeURIComponent(basePath(name, key)))
+              .then(function (info) { st.info = info; rerender(); }).catch(function () { rerender(); });
+          } else rerender();
+        })
+        .catch(function (err) { st.saving = false; st.msg = { kind: "err", text: errText(err) }; rerender(); });
+    }
+    function onEditorClick(act, name, btn) {
+      var key = btn.getAttribute("data-key");
+      var st = edState(name, key);
+      var c = cfgFor(name, key);
+      if (act === "edit-file") {
+        st.open = !st.open;
+        if (st.open) { if (c && c.kind === "dir") loadFolder(name, key); else loadFile(name, key, ""); }
+        else rerender();
+      } else if (act === "open-file") {
+        loadFile(name, key, btn.getAttribute("data-file"));
+      } else if (act === "new-file") {
+        var inp = document.querySelector('#' + WID + ' [data-newfile="' + key + '"]');
+        var rel = inp && inp.value.trim().replace(/^\/+/, "");
+        if (!rel) return;
+        loadFile(name, key, rel);
+      } else if (act === "save-file") {
+        saveFile(name, key);
+      } else if (act === "reset-file") {
+        st.text = templateFor(c, c && c.kind === "dir" ? st.file : ""); st.dirty = true; rerender();
+      }
     }
     function card(e) {
       var isOpen = !!open[e.name];
@@ -1535,8 +1669,9 @@
       if (!name) return;
       ev.preventDefault();
       var act = btn.getAttribute("data-act");
+      if (act === "edit-file" || act === "open-file" || act === "new-file" || act === "save-file" || act === "reset-file") { readForm(name); onEditorClick(act, name, btn); return; }
       if (act === "toggle") { readForm(name); open[name] = !open[name]; rerender(); }
-      else if (act === "close") { readForm(name); open[name] = false; rerender(); }
+      else if (act === "close") { readForm(name); open[name] = false; Object.keys(editors).forEach(function (k) { if (k.indexOf(name + "|") === 0) editors[k].open = false; }); rerender(); }
       else if (act === "schedule") doSchedule(name);
       else if (act === "remove") doRemove(name);
       else if (act === "run") doRun(name);
@@ -1590,6 +1725,8 @@
       root.addEventListener("input", function (ev) {
         var el = ev.target; var f = el && el.getAttribute && el.getAttribute("data-f");
         if (f === "prompt" || el.getAttribute("data-cfg") != null) { var c = el.closest(".acvc-pa-card"); if (c) readForm(c.getAttribute("data-name")); }
+        var fk = el.getAttribute && el.getAttribute("data-file-editor");
+        if (fk) { var cc = el.closest(".acvc-pa-card"); if (cc) { var st = edState(cc.getAttribute("data-name"), fk); st.text = el.value; st.dirty = true; } }
       });
       anchor.parentNode.insertBefore(root, anchor);
       if (data) render(root); else root.innerHTML = '<div class="acvc-pa-muted">Loading your personal automation blueprints…</div>';
