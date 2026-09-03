@@ -604,9 +604,11 @@
   })();
 
   // -------------------------------------------------------------------------
-  // Weekly feedback pill — left of the update pill when both show. Green
-  // when submitted within 7 days, yellow (pulsing) past a week or never,
-  // red (pulsing) past two weeks. Opens the stoplight check-in modal.
+  // Weekly feedback pill — left of the update pill when both show. The
+  // server's `phase` drives it: steady green for 5 days after a report,
+  // flashing green on days 6-7 (due), flashing yellow days 8-14 or never
+  // (late), flashing red from day 15 (overdue). A submission resets the
+  // clock. A "Logs" button to its right opens every submitted report.
   // Appears only when the mentor's Feedback Hub is configured.
   // -------------------------------------------------------------------------
   function acvcBurstConfetti() {
@@ -658,31 +660,50 @@
           bar.style.alignItems = "center";
           bar.appendChild(btn);
         }
+        var logsBtn = document.getElementById("acvc-feedback-logs-btn");
+        if (!logsBtn) {
+          logsBtn = document.createElement("a");
+          logsBtn.id = "acvc-feedback-logs-btn";
+          logsBtn.href = "#";
+          logsBtn.textContent = "Logs";
+          logsBtn.title = "Every weekly report you have submitted";
+          logsBtn.onclick = function (e) { e.preventDefault(); showLogsModal(); };
+          btn.parentNode.insertBefore(logsBtn, btn.nextSibling);
+        }
         var f = fstat.freshness || "yellow";
-        // Fresh (green) = the standing "Daily feedback" invitation, calm and
-        // the same shade as the update pill. Once the last check-in is more
-        // than 24h old the green pill pulses visibly (today's check-in is
-        // due). Past a week it becomes the pulsing yellow "Weekly feedback"
-        // nag; past two, pulsing red.
-        var dailyDue = f === "green" && fstat.lastSubmittedAt &&
-          (Date.now() / 1000 - fstat.lastSubmittedAt) > 24 * 3600;
-        btn.textContent = f === "green" ? "📝 Daily feedback" : "📝 Weekly feedback";
+        var ph = fstat.phase || (f === "green" ? "steady" : f === "red" ? "overdue" : "late");
+        // Motion follows the phase: steady = calm; due = green pulse;
+        // late = yellow pulse; overdue = red pulse.
+        var anim = ph === "due"
+          ? "animation:acvc-feedback-pulse-green 1.5s ease-in-out infinite;"
+          : ph === "late"
+            ? "animation:acvc-feedback-pulse-yellow 1.5s ease-in-out infinite;"
+            : ph === "overdue"
+              ? "animation:acvc-feedback-pulse-red 1.3s ease-in-out infinite;"
+              : "";
+        btn.textContent = "📝 Weekly feedback";
+        btn.setAttribute("data-phase", ph);
         btn.style.cssText =
-          "margin-left:auto;margin-right:18px;flex-shrink:0;font-size:12px;" +
+          "margin-left:auto;margin-right:0;flex-shrink:0;font-size:12px;" +
           "font-weight:700;letter-spacing:0.04em;padding:4px 12px;" +
           "border-radius:999px;text-decoration:none;color:#04211c;" +
           "cursor:pointer;order:97;" +
-          "background:" + COLORS[f] + ";" +
-          (f === "yellow"
-            ? "animation:acvc-feedback-pulse-yellow 1.5s ease-in-out infinite;"
-            : f === "red"
-              ? "animation:acvc-feedback-pulse-red 1.3s ease-in-out infinite;"
-              : dailyDue
-                ? "animation:acvc-feedback-pulse-daily 1.5s ease-in-out infinite;"
-                : "");
+          "background:" + COLORS[f] + ";" + anim;
+        logsBtn.style.cssText =
+          "margin-left:8px;margin-right:18px;flex-shrink:0;font-size:12px;" +
+          "font-weight:700;letter-spacing:0.04em;padding:4px 11px;" +
+          "border-radius:999px;text-decoration:none;cursor:pointer;order:97;" +
+          "color:inherit;border:1px solid color-mix(in srgb, currentColor 35%, transparent);" +
+          "opacity:0.85;";
+        var days = fstat.daysSince;
         btn.title = fstat.lastSubmittedAt
-          ? "Last check-in: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString()
-          : "No check-in yet — your mentor is waiting to hear from you";
+          ? "Last report: " + new Date(fstat.lastSubmittedAt * 1000).toLocaleString() +
+            (days != null ? " (" + days + " days ago)" : "") +
+            (ph === "steady" ? " — next one due in " + Math.max(0, Math.ceil(5 - days)) + " days"
+              : ph === "due" ? " — this week's report is due"
+                : ph === "late" ? " — over a week without a report"
+                  : " — over two weeks without a report")
+          : "No report yet — your mentor is waiting to hear from you";
         // sit LEFT of the update pill when it exists (kill its auto margin
         // every tick — its own ensure() may recreate it)
         var up = document.getElementById("acvc-update-btn");
@@ -693,8 +714,12 @@
       SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/feedback/status")
         .then(function (d) {
           fstat = d;
-          var old = document.getElementById("acvc-feedback-btn");
-          if (old && (!d || !d.configured)) old.remove();
+          if (!d || !d.configured) {
+            ["acvc-feedback-btn", "acvc-feedback-logs-btn"].forEach(function (id) {
+              var old = document.getElementById(id);
+              if (old) old.remove();
+            });
+          }
           ensure();
         })
         .catch(function () {});
@@ -714,7 +739,6 @@
       function close() { overlay.remove(); }
       overlay.onclick = function (e) { if (e.target === overlay) close(); };
 
-      var daily = fstat && fstat.freshness === "green";
       var ident = (fstat && fstat.identity) || { name: "", email: "" };
       var hasIdent = !!(ident.name && ident.email);
       var prefillEmail = ident.email || (fstat && fstat.loginEmail) || "";
@@ -722,7 +746,7 @@
       box.className = "acvc-update-box";
       box.innerHTML =
         '<div class="acvc-update-title">' +
-        (daily ? "How are you doing today?" : "How are you doing this week?") +
+        "How are you doing this week?" +
         "</div>" +
         '<div class="acvc-fb-ident' + (hasIdent ? " acvc-fb-ident-locked" : "") + '">' +
         '  <div class="acvc-fb-ident-fields">' +
@@ -752,8 +776,7 @@
         '    <textarea id="acvc-fb-note" rows="3" placeholder="One or two lines that explain why you are feeling this way. Be honest — we need the feedback to help you."></textarea>' +
         "  </div>" +
         "</div>" +
-        "<label>" + (daily ? "What did you get done since your last check-in?"
-                            : "What did you get done this week?") + "</label>" +
+        "<label>What did you get done this week?</label>" +
         '<textarea id="acvc-fb-activities" rows="2" placeholder="Summary of the activities you performed…"></textarea>' +
         "<label>What is your very next step?</label>" +
         '<textarea id="acvc-fb-next" rows="2" placeholder="The one concrete thing you\'ll do next…"></textarea>' +
@@ -851,6 +874,143 @@
           send.disabled = false;
         });
       };
+    }
+
+    // ---- Logs: every report the mentee has submitted, exactly as sent ----
+    function esc(v) {
+      return String(v == null ? "" : v)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function fmtWhen(ts) {
+      try { return new Date(ts * 1000).toLocaleString(); } catch (e) { return String(ts); }
+    }
+    var FACE = { green: "🙂", yellow: "😐", red: "🙁" };
+    var FACE_LABEL = { green: "Good week — on track", yellow: "OK week — some friction",
+                       red: "Rough week — I need help" };
+    function field(label, value, pre) {
+      if (value == null || String(value).trim() === "") return "";
+      return '<div class="acvc-fb-log-field"><div class="acvc-fb-log-k">' + esc(label) +
+        '</div><div class="acvc-fb-log-v' + (pre ? " acvc-fb-log-pre" : "") + '">' +
+        esc(value) + "</div></div>";
+    }
+    function renderLevel(lv) {
+      if (!lv || typeof lv !== "object") return "";
+      var html = "";
+      if (lv.level != null) html += field("Level", lv.level + (lv.levelName ? " — " + lv.levelName : ""));
+      if (lv.summary) html += field("Summary", lv.summary, true);
+      var verdicts = lv.verdicts || lv.history || [];
+      if (verdicts.length) {
+        html += '<div class="acvc-fb-log-k">Verdict history (' + verdicts.length + ")</div>";
+        verdicts.forEach(function (v) {
+          var head = [v.at ? fmtWhen(v.at) : "", v.level != null ? "level " + v.level : "",
+                      v.verdict || v.result || ""].filter(Boolean).join(" · ");
+          html += '<details class="acvc-fb-log-sub"><summary>' + esc(head || "verdict") + "</summary>" +
+            '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(v, null, 2)) + "</pre></details>";
+        });
+      }
+      var rest = Object.keys(lv).filter(function (k) {
+        return ["level", "levelName", "summary", "verdicts", "history"].indexOf(k) === -1;
+      });
+      if (rest.length) {
+        var extra = {};
+        rest.forEach(function (k) { extra[k] = lv[k]; });
+        html += '<details class="acvc-fb-log-sub"><summary>More level detail</summary>' +
+          '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(extra, null, 2)) + "</pre></details>";
+      }
+      return html;
+    }
+    function renderRoadmap(rm) {
+      if (!rm || typeof rm !== "object") return "";
+      var html = "";
+      var steps = rm.steps || [];
+      if (steps.length) {
+        html += '<table class="acvc-fb-log-table"><thead><tr><th>Step</th><th>Status</th><th>Summary</th></tr></thead><tbody>';
+        steps.forEach(function (st) {
+          html += "<tr><td>" + esc(st.title || st.name || st.id || st.step || "") +
+            '</td><td><span class="acvc-fb-log-status acvc-fb-log-' + esc(st.status || "open") + '">' +
+            esc(st.status || "open") + "</span></td><td>" +
+            esc(st.summary || st.notes || "") + "</td></tr>";
+        });
+        html += "</tbody></table>";
+      }
+      if (rm.companyContext && Object.keys(rm.companyContext).length) {
+        html += '<details class="acvc-fb-log-sub"><summary>Company context</summary>' +
+          '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(rm.companyContext, null, 2)) + "</pre></details>";
+      }
+      if (rm.truncated) html += field("Note", rm.truncated);
+      html += '<details class="acvc-fb-log-sub"><summary>Full roadmap record (as sent)</summary>' +
+        '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(rm, null, 2)) + "</pre></details>";
+      return html;
+    }
+    function renderEntry(e, i) {
+      var detail = e.detail || {};
+      var roadmap = (e.roadmapDone != null && e.roadmapTotal != null)
+        ? e.roadmapDone + " / " + e.roadmapTotal + " roadmap steps done" : "";
+      var level = e.level != null ? "Level " + e.level + (e.levelName ? " — " + e.levelName : "") : "";
+      var checklist = (e.checklistDone != null && e.checklistTotal != null)
+        ? e.checklistDone + " / " + e.checklistTotal + " level checklist items" : "";
+      return '<details class="acvc-fb-log"' + (i === 0 ? " open" : "") + ">" +
+        '<summary><span class="acvc-fb-log-face">' + (FACE[e.sentiment] || "📝") + "</span>" +
+        '<span class="acvc-fb-log-when">' + esc(fmtWhen(e.at)) + "</span>" +
+        '<span class="acvc-fb-log-meta">' + esc([level, roadmap].filter(Boolean).join(" · ")) + "</span>" +
+        "</summary>" +
+        '<div class="acvc-fb-log-body">' +
+        field("How I felt", (FACE[e.sentiment] || "") + " " + (FACE_LABEL[e.sentiment] || e.sentiment || "")) +
+        field("Quick note", e.note, true) +
+        field("What I got done", e.activities, true) +
+        field("Very next step", e.nextStep, true) +
+        field("Stuck on", e.stuck, true) +
+        field("Submitted as", [e.name, e.email].filter(Boolean).join(" · ")) +
+        field("Status shared", [level, checklist, roadmap].filter(Boolean).join(" · ")) +
+        '<details class="acvc-fb-log-sub acvc-fb-log-section"><summary>Level details (as sent)</summary>' +
+        (renderLevel(detail.level) || '<div class="acvc-fb-log-empty">No level detail was included.</div>') +
+        "</details>" +
+        '<details class="acvc-fb-log-sub acvc-fb-log-section"><summary>Roadmap details (as sent)</summary>' +
+        (renderRoadmap(detail.roadmap) || '<div class="acvc-fb-log-empty">No roadmap detail was included.</div>') +
+        "</details>" +
+        "</div></details>";
+    }
+    function showLogsModal() {
+      if (document.getElementById("acvc-fb-logs-modal")) return;
+      var overlay = document.createElement("div");
+      overlay.id = "acvc-fb-logs-modal";
+      overlay.className = "acvc-update-overlay";
+      function close() { overlay.remove(); }
+      overlay.onclick = function (e) { if (e.target === overlay) close(); };
+      var box = document.createElement("div");
+      box.className = "acvc-update-box acvc-fb-logs-box";
+      box.innerHTML = '<div class="acvc-update-title">Your feedback logs</div>' +
+        '<div class="acvc-update-sub" id="acvc-fb-logs-sub">Loading…</div>' +
+        '<div id="acvc-fb-logs-list"></div>';
+      var row = document.createElement("div");
+      row.className = "acvc-update-actions";
+      var closeBtn = document.createElement("button");
+      closeBtn.className = "acvc-update-cancel";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = close;
+      row.appendChild(closeBtn);
+      box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      SDK.fetchJSON("/api/plugins/ai-cyber-value-creator/feedback/logs")
+        .then(function (d) {
+          var entries = (d && d.entries) || [];
+          var sub = box.querySelector("#acvc-fb-logs-sub");
+          var list = box.querySelector("#acvc-fb-logs-list");
+          if (!entries.length) {
+            sub.textContent = "Nothing submitted yet. Your first weekly report will show up here, " +
+              "with everything that was sent — including your level and roadmap details.";
+            list.innerHTML = "";
+            return;
+          }
+          sub.textContent = entries.length + (entries.length === 1 ? " report" : " reports") +
+            " submitted — newest first. Each one shows exactly what your mentor received.";
+          list.innerHTML = entries.map(renderEntry).join("");
+        })
+        .catch(function (e) {
+          box.querySelector("#acvc-fb-logs-sub").textContent =
+            "Could not load your logs: " + String((e && e.message) || e);
+        });
     }
 
     poll();

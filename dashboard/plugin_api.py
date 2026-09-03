@@ -572,6 +572,13 @@ def feedback_status() -> dict:
     return _feedback().status()
 
 
+@router.get("/feedback/logs")
+def feedback_logs() -> dict:
+    """Everything the mentee has submitted, newest first (level + roadmap
+    dossier included) — the "Logs" button in the header."""
+    return _feedback().logs()
+
+
 class FeedbackBody(BaseModel):
     sentiment: str = ""
     note: str = ""

@@ -44,6 +44,22 @@ def test_freshness_thresholds():
     assert feedback.freshness(now - 15 * 86400, now) == "red"
 
 
+def test_phase_schedule():
+    """Steady green for 5 days, flashing green days 6-7, flashing yellow
+    8-14, flashing red 15+; never-submitted counts as late."""
+    now = time.time()
+    d = 86400
+    assert feedback.phase(None, now) == "late"
+    assert feedback.phase(now, now) == "steady"
+    assert feedback.phase(now - 5 * d, now) == "steady"
+    assert feedback.phase(now - 5 * d - 1, now) == "due"
+    assert feedback.phase(now - 7 * d, now) == "due"
+    assert feedback.phase(now - 7 * d - 1, now) == "late"
+    assert feedback.phase(now - 14 * d, now) == "late"
+    assert feedback.phase(now - 14 * d - 1, now) == "overdue"
+    assert feedback.phase(now - 40 * d, now) == "overdue"
+
+
 def test_status_unconfigured(home, monkeypatch):
     monkeypatch.delenv("FEEDBACK_HUB_URL")
     st = feedback.status()
@@ -113,9 +129,21 @@ def test_submit_assembles_and_posts(home):
     assert p["checklistDone"] == 1 and p["checklistTotal"] == 2
     assert p["roadmapDone"] == 1 and p["roadmapTotal"] == 17
     assert p["statusAck"] is True
-    # local state updated -> pill goes green
+    # local state updated -> pill goes green, clock restarts (steady)
     st = feedback.status()
     assert st["freshness"] == "green"
+    assert st["phase"] == "steady"
+    assert st["logCount"] == 1
+    # the log keeps everything that was sent, dossier included
+    lg = feedback.logs()
+    assert lg["count"] == 1
+    e = lg["entries"][0]
+    assert e["sentiment"] == "yellow" and e["nextStep"] == "call two more brokers"
+    assert e["level"] == 2 and e["roadmapDone"] == 1
+    assert e["detail"]["level"]["level"] == 2
+    assert any(s.get("id") == "create-value-icp" or s.get("step") == "create-value-icp"
+               for s in e["detail"]["roadmap"].get("steps", []))
+    assert e["at"] == st["lastSubmittedAt"]
 
 
 def test_submit_surfaces_hub_errors(home):

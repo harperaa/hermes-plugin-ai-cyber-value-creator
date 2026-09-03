@@ -21,6 +21,7 @@ from typing import Any, Optional
 from . import context_store, progress
 from .methodology import ALL_TASK_IDS
 
+DAY = 86400
 WEEK = 7 * 86400
 
 
@@ -65,7 +66,7 @@ def _save(state: dict) -> None:
 
 
 def freshness(last: Optional[float], now: Optional[float] = None) -> str:
-    """green <=7d, yellow <=14d (or never), red >14d."""
+    """Pill colour: green <=7d, yellow <=14d (or never), red >14d."""
     now = now or time.time()
     if last is None:
         return "yellow"
@@ -75,6 +76,28 @@ def freshness(last: Optional[float], now: Optional[float] = None) -> str:
     if age <= 2 * WEEK:
         return "yellow"
     return "red"
+
+
+def phase(last: Optional[float], now: Optional[float] = None) -> str:
+    """How urgently the weekly report is wanted — drives the pill motion.
+
+    steady  : submitted within the last 5 days (calm green)
+    due     : days 6-7 (flashing green — this week's report is due)
+    late    : days 8-14, or never submitted (flashing yellow)
+    overdue : day 15 onward (flashing red)
+    A submission resets the clock: the next 5 days are steady again.
+    """
+    now = now or time.time()
+    if last is None:
+        return "late"
+    age = now - last
+    if age <= 5 * DAY:
+        return "steady"
+    if age <= WEEK:
+        return "due"
+    if age <= 2 * WEEK:
+        return "late"
+    return "overdue"
 
 
 def _mentee_email() -> str:
@@ -193,6 +216,9 @@ def status() -> dict:
         "configured": configured(),
         "lastSubmittedAt": last,
         "freshness": freshness(last),
+        "phase": phase(last),
+        "daysSince": (round((time.time() - last) / DAY, 1) if last else None),
+        "logCount": len(state.get("history") or []),
         "identity": get_identity(),
         "loginEmail": _mentee_email(),   # prefill for the first submission
     }
@@ -274,9 +300,19 @@ def submit(sentiment: str, note: str, activities: str, stuck: str,
     state = _load()
     state["identity"] = {"name": name, "email": email}
     state["lastSubmittedAt"] = time.time()
-    state.setdefault("history", []).append(
-        {"at": state["lastSubmittedAt"], "sentiment": sentiment,
-         "note": payload["note"]})
+    # The log keeps EVERYTHING that was sent — including the level and
+    # roadmap dossier — so the mentee can review exactly what the mentor saw.
+    entry = {"at": state["lastSubmittedAt"], "hub": url}
+    entry.update(payload)
+    state.setdefault("history", []).append(entry)
     state["history"] = state["history"][-52:]
     _save(state)
     return {"ok": True, "status": status()}
+
+
+def logs() -> dict:
+    """Every submitted report, newest first, exactly as sent."""
+    hist = list(_load().get("history") or [])
+    hist.sort(key=lambda e: float(e.get("at") or 0), reverse=True)
+    return {"configured": configured(), "identity": get_identity(),
+            "count": len(hist), "entries": hist}
