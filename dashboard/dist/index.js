@@ -1336,16 +1336,26 @@
     }
 
     // ---- rendering ----------------------------------------------------------
+    var CARD_ATTRS = 'class="acvc-pa-card border border-midground/15 bg-background-base/80 text-midground w-full overflow-hidden font-mondwest normal-case" style="background: var(--component-card-background); border-image: var(--component-card-border-image); box-shadow: var(--component-card-box-shadow); clip-path: var(--component-card-clip-path);"';
+    var UI = {
+      badge: "inline-flex items-center font-compressed px-2 py-1 leading-none tracking-[0.2em] border border-midground/15 bg-midground/8 text-midground", badgeOn: "inline-flex items-center font-compressed px-2 py-1 leading-none tracking-[0.2em] border border-midground bg-midground text-background-base", btn: "font-mono group relative grid cursor-pointer grid-cols-[auto_1fr_auto] items-center font-bold disabled:pointer-events-none disabled:bg-midground/15 disabled:text-midground disabled:shadow-none px-3 py-1.5 text-[0.7rem] tracking-[0.15em] [&>svg]:size-3 bg-midground text-background-base active:invert shadow-[inset_-1px_-1px_0_0_#00000080,inset_1px_1px_0_0_#ffffff80]", ghost: "font-mono group relative grid cursor-pointer grid-cols-[auto_1fr_auto] items-center font-bold disabled:pointer-events-none px-3 py-1.5 text-[0.7rem] tracking-[0.15em] [&>svg]:size-3 bg-transparent text-current hover:bg-midground/10 shadow-none", big: "font-mono group relative grid cursor-pointer grid-cols-[auto_1fr_auto] items-center leading-0 font-bold tracking-[0.2em] disabled:pointer-events-none disabled:bg-midground/15 disabled:text-midground disabled:shadow-none px-[.9em_.75em] py-[1.25em] bg-midground text-background-base active:invert shadow-[inset_-1px_-1px_0_0_#00000080,inset_1px_1px_0_0_#ffffff80]",
+      label: "font-mondwest text-xs tracking-[0.1em] uppercase leading-none", input: "flex h-9 w-full border border-midground/15 bg-background/40 px-3 py-1 font-courier text-sm transition-colors placeholder:text-midground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-midground/30 focus-visible:border-midground/25 disabled:cursor-not-allowed disabled:opacity-50", textarea: "flex w-full border border-midground/15 bg-background/40 px-3 py-2 font-courier text-sm transition-colors placeholder:text-midground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-midground/30 focus-visible:border-midground/25", help: "text-xs opacity-60",
+      arc: '<span aria-hidden="true" class="arc-border opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 group-active:opacity-100"></span>', wand: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wand-2 h-4 w-4 shrink-0 opacity-70"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>', clock: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock size-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+    };
+    function btn(act, text, opts) {
+      opts = opts || {};
+      var extra = opts.attrs || "";
+      return '<button type="button" class="' + (opts.kind === "ghost" ? UI.ghost : opts.kind === "big" ? UI.big : UI.btn) + ' whitespace-nowrap ' + (opts.cls || "") + '" data-act="' + act + '"' + extra + (opts.disabled ? " disabled" : "") + (opts.title ? ' title="' + esc(opts.title) + '"' : "") + ">" + UI.arc +
+        (opts.kind === "big" ? '<span class="w-5"></span><span class="absolute top-1/2 -translate-y-1/2 left-3">' + UI.clock + "</span>" : "") + esc(text) + "</button>";
+    }
     function statusPill(e) {
-      var map = { scheduled: ["Scheduled", "acvc-pa-st-on"], suggested: ["Suggested", "acvc-pa-st-sug"],
-        dismissed: ["Dismissed", "acvc-pa-st-off"], available: ["Not scheduled", "acvc-pa-st-off"] };
-      var m = map[e.status] || map.available;
-      var extra = "";
+      var map = { scheduled: "scheduled", suggested: "suggested", dismissed: "dismissed", available: "not scheduled" };
+      var html = '<span class="acvc-pa-st ' + (e.status === "scheduled" ? UI.badgeOn : UI.badge) + '">' + esc(map[e.status] || map.available) + "</span>";
       if (e.status === "scheduled" && e.job) {
-        if (e.job.lastStatus && /fail|error/i.test(e.job.lastStatus)) extra = ' <span class="acvc-pa-fail">last run failed</span>';
-        else if (e.job.lastRunAt) extra = ' <span class="acvc-pa-muted">last run ' + esc(fmtTs(e.job.lastRunAt)) + "</span>";
+        if (e.job.lastStatus && /fail|error/i.test(e.job.lastStatus)) html += '<span class="acvc-pa-fail ' + UI.badge + '" style="color:#ef4444;border-color:#ef4444">last run failed</span>';
+        else if (e.job.lastRunAt) html += '<span class="' + UI.badge + '">last run ' + esc(fmtTs(e.job.lastRunAt)) + "</span>";
       }
-      return '<span class="acvc-pa-st ' + m[1] + '">' + m[0] + "</span>" + extra;
+      return html;
     }
     function timeOptions(sel) {
       var out = "";
@@ -1355,69 +1365,61 @@
       }
       return out;
     }
+    function field(label, control, help) {
+      return '<div class="space-y-1"><label class="' + UI.label + '">' + esc(label) + "</label>" + control + (help ? '<p class="' + UI.help + '">' + help + "</p>" : "") + "</div>";
+    }
     function form(e) {
       var d = draftFor(e);
       var f = d.sched;
       var cron = buildCron(f);
       var modes = [["weekdays", "Every weekday"], ["daily", "Every day"], ["weekly", "Weekly on…"],
         ["monthly", "Monthly on day…"], ["hours", "Every N hours"], ["minutes", "Every N minutes"], ["custom", "Custom cron"]];
-      var html = '<div class="acvc-pa-form" data-name="' + esc(e.name) + '">';
-      html += '<div class="acvc-pa-row">';
-      html += '<label>When<select data-f="mode">' + modes.map(function (m) {
+      var html = '<div class="acvc-pa-form space-y-3 border-t pt-3" data-name="' + esc(e.name) + '">';
+      html += '<div class="grid gap-3 md:grid-cols-2">';
+      html += field("When?", '<select class="' + UI.input + '" data-f="mode">' + modes.map(function (m) {
         return '<option value="' + m[0] + '"' + (f.mode === m[0] ? " selected" : "") + ">" + m[1] + "</option>";
-      }).join("") + "</select></label>";
+      }).join("") + "</select>");
       if (f.mode === "daily" || f.mode === "weekdays" || f.mode === "weekly" || f.mode === "monthly") {
-        html += '<label>Time<select data-f="time">' + timeOptions(f) + "</select></label>";
+        html += field("What time?", '<select class="' + UI.input + '" data-f="time">' + timeOptions(f) + "</select>", "server time zone: " + esc(data.serverTz || "UTC"));
       }
-      if (f.mode === "weekly") {
-        html += '<div class="acvc-pa-days">' + DOW.map(function (n, i) {
-          return '<label class="acvc-pa-day"><input type="checkbox" data-f="dow" value="' + i + '"' +
-            (f.dow.indexOf(i) !== -1 ? " checked" : "") + ">" + n + "</label>";
-        }).join("") + "</div>";
-      }
-      if (f.mode === "monthly") html += '<label>Day of month<input type="number" min="1" max="28" data-f="dom" value="' + f.dom + '"></label>';
-      if (f.mode === "hours") html += '<label>Every<input type="number" min="1" max="23" data-f="every" value="' + f.every + '"> hours</label>';
-      if (f.mode === "minutes") html += '<label>Every<input type="number" min="5" max="59" data-f="every" value="' + f.every + '"> minutes</label>';
-      if (f.mode === "custom") html += '<label>Cron expression<input type="text" data-f="cron" value="' + esc(f.cron) + '" placeholder="m h dom mon dow"></label>';
-      html += '<label>Deliver to<select data-f="deliver">' + (data.deliverOptions || ["origin", "local"]).map(function (o) {
-        var lab = o === "origin" ? "origin — the chat it was accepted from; from this page: your home channel, else the output file"
-          : o === "local" ? "local — output file only (see the Jobs tab)"
-          : /^bot-chat/.test(o) ? o + " — hand the output to this instance's Bot Chat as a new turn (the bot acts on it)"
-          : o + " — post to this platform's home channel";
-        return '<option value="' + esc(o) + '"' + (d.deliver === o ? " selected" : "") + ">" + esc(lab) + "</option>";
-      }).join("") + "</select></label>";
+      if (f.mode === "monthly") html += field("Day of month", '<input class="' + UI.input + '" type="number" min="1" max="28" data-f="dom" value="' + f.dom + '">');
+      if (f.mode === "hours") html += field("Every how many hours?", '<input class="' + UI.input + '" type="number" min="1" max="23" data-f="every" value="' + f.every + '">');
+      if (f.mode === "minutes") html += field("Every how many minutes?", '<input class="' + UI.input + '" type="number" min="5" max="59" data-f="every" value="' + f.every + '">');
+      if (f.mode === "custom") html += field("Cron expression", '<input class="' + UI.input + '" type="text" data-f="cron" value="' + esc(f.cron) + '" placeholder="m h dom mon dow">', "five fields: minute hour day-of-month month day-of-week");
+      html += field("Where to deliver?", '<select class="' + UI.input + '" data-f="deliver">' + (data.deliverOptions || ["origin", "local"]).map(function (o) {
+        return '<option value="' + esc(o) + '"' + (d.deliver === o ? " selected" : "") + ">" + esc(o) + "</option>";
+      }).join("") + "</select>", "origin = the chat it was accepted from, else your home channel, else the output file; local = save only, no message; bot-chat = hand the output to this instance's Bot Chat as a new turn");
       html += "</div>";
-      html += '<div class="acvc-pa-when">Runs <b>' + esc(human(cron)) + '</b> <code>' + esc(cron) + "</code>" +
-        (data.serverTz ? ' <span class="acvc-pa-muted">server time zone: ' + esc(data.serverTz) + "</span>" : "") + "</div>";
-      html += '<label class="acvc-pa-block">What it should focus on (the instruction the job runs the skill with)' +
-        '<textarea data-f="prompt" rows="3">' + esc(d.prompt) + "</textarea></label>";
+      if (f.mode === "weekly") {
+        html += '<div class="space-y-1"><label class="' + UI.label + '">Which days?</label><div class="flex flex-wrap gap-1">' + DOW.map(function (n, i) {
+          var on = f.dow.indexOf(i) !== -1;
+          return '<label class="acvc-pa-day cursor-pointer ' + (on ? UI.badgeOn : UI.badge) + '"><input type="checkbox" class="sr-only" data-f="dow" value="' + i + '"' + (on ? " checked" : "") + ">" + n + "</label>";
+        }).join("") + "</div></div>";
+      }
+      html += '<p class="acvc-pa-when text-sm">Runs <b>' + esc(human(cron)) + '</b> <code class="font-courier text-xs opacity-70">' + esc(cron) + "</code>" + (data.serverTz ? ' <span class="text-xs opacity-60">server time zone: ' + esc(data.serverTz) + "</span>" : "") + "</p>";
+      html += field("What should it focus on?", '<textarea class="' + UI.textarea + '" rows="3" data-f="prompt">' + esc(d.prompt) + "</textarea>", "the instruction the job runs the skill with — edit freely");
       if (e.config && e.config.length) {
-        html += '<div class="acvc-pa-cfg"><div class="acvc-pa-cfg-title">Settings for this skill</div>';
+        html += '<div class="space-y-3 border-t pt-3"><div class="' + UI.label + ' opacity-70">Settings for this skill</div>';
         e.config.forEach(function (c) {
           var val = d.config[c.key] != null ? d.config[c.key] : c.value;
           var isFs = c.kind === "file" || c.kind === "dir";
-          html += '<div class="acvc-pa-cfg-item" data-key="' + esc(c.key) + '">';
-          html += '<label>' + esc(c.label) + (c.description && c.description !== c.label ? ' <span class="acvc-pa-muted">' + esc(c.description) + "</span>" : "") +
-            '<div class="acvc-pa-cfg-row"><input type="text" data-cfg="' + esc(c.key) + '" value="' + esc(val) + '" placeholder="' + esc(c.default) + '">' +
-            (isFs ? '<button type="button" class="acvc-pa-btn" data-act="edit-file" data-key="' + esc(c.key) + '">' +
-              (edState(e.name, c.key).open ? "Hide" : c.kind === "dir" ? "Open folder" : "Edit file") + "</button>" : "") +
-            "</div></label>";
-          if (c.hint) html += '<div class="acvc-pa-hint">' + esc(c.hint) + "</div>";
+          var control = '<div class="flex items-center gap-2"><input class="' + UI.input + '" type="text" data-cfg="' + esc(c.key) + '" value="' + esc(val) + '" placeholder="' + esc(c.default) + '">' +
+            (isFs ? btn("edit-file", edState(e.name, c.key).open ? "Hide" : c.kind === "dir" ? "Open folder" : "Edit file", { kind: "ghost", attrs: ' data-key="' + esc(c.key) + '"' }) : "") + "</div>";
+          html += '<div class="acvc-pa-cfg-item" data-key="' + esc(c.key) + '">' + field(c.label, control, esc(c.hint || (c.description && c.description !== c.label ? c.description : "")));
           if (isFs && edState(e.name, c.key).open) html += editor(e, c, val);
           html += "</div>";
         });
         html += "</div>";
       }
       var b = busy[e.name];
-      html += '<div class="acvc-pa-actions">';
-      html += '<button type="button" class="acvc-pa-btn acvc-pa-go" data-act="schedule"' + (b ? " disabled" : "") + ">" +
-        (b === "scheduling" ? "Saving…" : e.status === "scheduled" ? "Save changes" : "Schedule") + "</button>";
+      html += '<div class="flex flex-wrap items-center gap-2 pt-1">';
+      html += btn("schedule", b === "scheduling" ? "Saving…" : e.status === "scheduled" ? "Save changes" : "Schedule it", { kind: "big", disabled: !!b });
       if (e.status === "scheduled" && e.job) {
-        html += '<button type="button" class="acvc-pa-btn" data-act="run"' + (b ? " disabled" : "") + ' title="Runs the job right now and waits for it to finish — a full run can take a few minutes">' + (b === "running" ? "Running… (can take minutes)" : "Run now") + "</button>";
-        html += '<button type="button" class="acvc-pa-btn acvc-pa-danger" data-act="remove"' + (b ? " disabled" : "") + ">" + (b === "removing" ? "Removing…" : "Remove") + "</button>";
+        html += btn("run", b === "running" ? "Running… (can take minutes)" : "Run now", { kind: "ghost", disabled: !!b, title: "Runs the job right now and waits for it to finish — a full run can take a few minutes" });
+        html += btn("remove", b === "removing" ? "Removing…" : "Remove", { kind: "ghost", disabled: !!b, cls: "text-red-500" });
       }
-      html += '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="close">Close</button>';
-      if (flash[e.name]) html += '<span class="acvc-pa-flash acvc-pa-flash-' + flash[e.name].kind + '">' + esc(flash[e.name].text) + "</span>";
+      html += btn("close", "Close", { kind: "ghost" });
+      if (flash[e.name]) html += '<span class="acvc-pa-flash acvc-pa-flash-' + flash[e.name].kind + ' text-xs font-courier" style="color:' + (flash[e.name].kind === "err" ? "#ef4444" : "inherit") + '">' + esc(flash[e.name].text) + "</span>";
       html += "</div></div>";
       return html;
     }
@@ -1437,46 +1439,41 @@
     }
     function editor(e, c, base) {
       var st = edState(e.name, c.key);
-      var html = '<div class="acvc-pa-editor" data-key="' + esc(c.key) + '">';
-      if (st.loading && !st.info) return html + '<div class="acvc-pa-muted">Loading…</div></div>';
-      if (st.msg && st.msg.kind === "err" && !st.info) return html + '<div class="acvc-pa-flash-err">' + esc(st.msg.text) + "</div></div>";
+      var html = '<div class="acvc-pa-editor space-y-2 border border-midground/15 bg-background/40 p-3" data-key="' + esc(c.key) + '">';
+      if (st.loading && !st.info) return html + '<div class="' + UI.help + '">Loading…</div></div>';
+      if (st.msg && st.msg.kind === "err" && !st.info) return html + '<div class="acvc-pa-flash-err text-xs" style="color:#ef4444">' + esc(st.msg.text) + "</div></div>";
       var info = st.info || {};
       if (c.kind === "dir") {
-        // folder: chips for existing files + starters we can create + new file
         var existing = (info.files || []).map(function (f) { return f.name; });
         var starters = (c.files || []).map(function (f) { return f.name; }).filter(function (n) { return existing.indexOf(n) === -1; });
-        html += '<div class="acvc-pa-editor-head"><b>' + esc(info.display || base) + "</b>" +
-          (info.exists ? ' <span class="acvc-pa-muted">' + existing.length + (existing.length === 1 ? " file" : " files") + "</span>"
-            : ' <span class="acvc-pa-muted">not created yet</span>') + "</div>";
-        html += '<div class="acvc-pa-chips">';
+        html += '<div class="acvc-pa-editor-head text-sm"><b class="font-courier">' + esc(info.display || base) + "</b> " +
+          (info.exists ? '<span class="' + UI.help + '">' + existing.length + (existing.length === 1 ? " file" : " files") + "</span>" : '<span class="' + UI.help + '">not created yet</span>') + "</div>";
+        html += '<div class="acvc-pa-chips flex flex-wrap items-center gap-1">';
         existing.forEach(function (n) {
-          html += '<button type="button" class="acvc-pa-chip' + (st.file === n ? " acvc-pa-chip-on" : "") + '" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '">' + esc(n) + "</button>";
+          html += '<button type="button" class="acvc-pa-chip cursor-pointer ' + (st.file === n ? "acvc-pa-chip-on " + UI.badgeOn : UI.badge) + '" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '">' + esc(n) + "</button>";
         });
         starters.forEach(function (n) {
-          html += '<button type="button" class="acvc-pa-chip acvc-pa-chip-new" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '" title="Not there yet — opens with our example">' + esc(n) + " ＋</button>";
+          html += '<button type="button" class="acvc-pa-chip acvc-pa-chip-new cursor-pointer border-dashed ' + UI.badge + '" data-act="open-file" data-key="' + esc(c.key) + '" data-file="' + esc(n) + '" title="Not there yet — opens with our example">' + esc(n) + " +</button>";
         });
-        html += '<span class="acvc-pa-newfile"><input type="text" placeholder="new-file.md" data-newfile="' + esc(c.key) + '">' +
-          '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="new-file" data-key="' + esc(c.key) + '">Add</button></span>';
+        html += '<span class="ml-auto flex items-center gap-1"><input class="' + UI.input + ' h-7 w-40" type="text" placeholder="new-file.md" data-newfile="' + esc(c.key) + '">' + btn("new-file", "Add", { kind: "ghost", attrs: ' data-key="' + esc(c.key) + '"' }) + "</span>";
         html += "</div>";
         if (starters.length) {
-          html += '<div class="acvc-pa-starters"><button type="button" class="acvc-pa-btn" data-act="create-starters" data-key="' + esc(c.key) + '"' + (st.creating ? " disabled" : "") + ">" +
-            (st.creating ? "Creating…" : "Create the " + starters.length + " starter file" + (starters.length === 1 ? "" : "s") + " (sample data)") + "</button>" +
-            ' <span class="acvc-pa-muted">Dashed chips are examples we ship — create them all, then edit or delete what you like.</span></div>';
+          html += '<div class="acvc-pa-starters flex flex-wrap items-center gap-2">' + btn("create-starters", st.creating ? "Creating…" : "Create the " + starters.length + " starter file" + (starters.length === 1 ? "" : "s") + " (sample data)", { attrs: ' data-key="' + esc(c.key) + '"', disabled: !!st.creating }) +
+            '<span class="' + UI.help + '">dashed = examples we ship — create them all, then edit or delete what you like</span></div>';
         }
-        if (!st.file) return html + '<div class="acvc-pa-muted">Pick a file to edit' + (starters.length ? ", or one of the suggested starters" : "") + ".</div>" +
-          (st.msg ? '<div class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + '">' + esc(st.msg.text) + "</div>" : "") + "</div>";
+        if (!st.file) return html + '<div class="' + UI.help + '">Pick a file to edit' + (starters.length ? ", or one of the suggested starters" : "") + ".</div>" +
+          (st.msg ? '<div class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + ' text-xs">' + esc(st.msg.text) + "</div>" : "") + "</div>";
       }
       var full = c.kind === "dir" ? joinPath(base, st.file) : base;
-      if (st.fileLoading) return html + '<div class="acvc-pa-editor-head"><b>' + esc(full) + '</b> <span class="acvc-pa-muted">loading…</span></div></div>';
+      if (st.fileLoading) return html + '<div class="acvc-pa-editor-head text-sm"><b class="font-courier">' + esc(full) + '</b> <span class="' + UI.help + '">loading…</span></div></div>';
       var fileInfo = st.fileInfo || {};
-      html += '<div class="acvc-pa-editor-head"><b>' + esc(fileInfo.display || full) + "</b> " +
-        (st.fileLoading ? '<span class="acvc-pa-muted">loading…</span>'
-          : fileInfo.exists ? '<span class="acvc-pa-muted">' + (st.dirty ? "edited — not saved" : "saved on disk") + "</span>"
-            : '<span class="acvc-pa-new">not created yet — this starts from our example; Save creates it</span>') + "</div>";
-      html += '<textarea class="acvc-pa-file" data-file-editor="' + esc(c.key) + '" rows="' + Math.min(18, Math.max(6, (st.text || "").split("\n").length + 1)) + '" spellcheck="false">' + esc(st.text) + "</textarea>";
-      html += '<div class="acvc-pa-actions"><button type="button" class="acvc-pa-btn acvc-pa-go" data-act="save-file" data-key="' + esc(c.key) + '"' + (st.saving ? " disabled" : "") + ">" + (st.saving ? "Saving…" : "Save file") + "</button>" +
-        (templateFor(c, c.kind === "dir" ? st.file : "") ? '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="reset-file" data-key="' + esc(c.key) + '">Reset to example</button>' : "") +
-        (st.msg ? '<span class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + '">' + esc(st.msg.text) + "</span>" : "") + "</div>";
+      html += '<div class="acvc-pa-editor-head text-sm"><b class="font-courier">' + esc(fileInfo.display || full) + "</b> " +
+        (fileInfo.exists ? '<span class="' + UI.help + '">' + (st.dirty ? "edited — not saved" : "saved on disk") + "</span>"
+          : '<span class="acvc-pa-new text-xs" style="color:#f59e0b">not created yet — this starts from our example; Save creates it</span>') + "</div>";
+      html += '<textarea class="acvc-pa-file ' + UI.textarea + ' whitespace-pre" data-file-editor="' + esc(c.key) + '" rows="' + Math.min(18, Math.max(6, (st.text || "").split("\n").length + 1)) + '" spellcheck="false">' + esc(st.text) + "</textarea>";
+      html += '<div class="flex flex-wrap items-center gap-2">' + btn("save-file", st.saving ? "Saving…" : "Save file", { attrs: ' data-key="' + esc(c.key) + '"', disabled: !!st.saving }) +
+        (templateFor(c, c.kind === "dir" ? st.file : "") ? btn("reset-file", "Reset to example", { kind: "ghost", attrs: ' data-key="' + esc(c.key) + '"' }) : "") +
+        (st.msg ? '<span class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + ' text-xs font-courier" style="color:' + (st.msg.kind === "err" ? "#ef4444" : "inherit") + '">' + esc(st.msg.text) + "</span>" : "") + "</div>";
       return html + "</div>";
     }
     function cfgFor(name, key) {
@@ -1577,28 +1574,28 @@
     }
     function card(e) {
       var isOpen = !!open[e.name];
-      return '<div class="acvc-pa-card' + (isOpen ? " acvc-pa-open" : "") + '" id="acvc-pa-' + esc(e.name) + '" data-name="' + esc(e.name) + '">' +
-        '<div class="acvc-pa-head">' +
-        '<div class="acvc-pa-num">' + e.number + "</div>" +
-        '<div class="acvc-pa-main"><div class="acvc-pa-title">' + esc(e.title) +
-        (e.level != null ? ' <span class="acvc-pa-level">Level ' + e.level + "</span>" : "") + "</div>" +
-        '<div class="acvc-pa-desc">' + esc(e.description) + "</div>" +
-        '<div class="acvc-pa-meta">' + statusPill(e) +
-        ' <span class="acvc-pa-muted">· ' + esc(e.job ? e.job.scheduleHuman : e.scheduleHuman) + "</span></div></div>" +
-        '<button type="button" class="acvc-pa-btn acvc-pa-toggle" data-act="toggle">' +
-        (isOpen ? "Cancel" : e.status === "scheduled" ? "Edit" : "Set up") + "</button>" +
-        "</div>" + (isOpen ? form(e) : "") + "</div>";
+      var tags = '<span class="' + UI.badge + '">level ' + (e.level != null ? e.level : "–") + "</span>" +
+        '<span class="' + UI.badge + '">' + esc(e.job ? e.job.scheduleHuman : e.scheduleHuman) + "</span>" + statusPill(e);
+      return '<div ' + CARD_ATTRS + ' id="acvc-pa-' + esc(e.name) + '" data-name="' + esc(e.name) + '">' +
+        '<div class="space-y-3 p-4">' +
+        '<div class="flex items-start justify-between gap-3"><div class="min-w-0">' +
+        '<div class="flex items-center gap-2">' + UI.wand + '<span class="acvc-pa-num ' + UI.badgeOn + '">' + e.number + '</span><span class="font-medium">' + esc(e.title) + "</span></div>" +
+        '<p class="mt-1 text-sm opacity-70">' + esc(e.description) + "</p>" +
+        '<div class="mt-2 flex flex-wrap gap-1">' + tags + "</div></div>" +
+        btn("toggle", isOpen ? "Cancel" : e.status === "scheduled" ? "Edit" : "Set up", { kind: isOpen ? "ghost" : "btn" }) +
+        "</div>" + (isOpen ? form(e) : "") + "</div></div>";
     }
     function render(root) {
       var entries = (data && data.entries) || [];
       var n = entries.filter(function (e) { return e.status === "scheduled"; }).length;
       root.innerHTML =
-        '<div class="acvc-pa-headline"><div><div class="acvc-pa-brand">AI CYBER VALUE CREATOR™ · PERSONAL AUTOMATION</div>' +
-        '<div class="acvc-pa-sub">' + entries.length + " blueprints in workshop order — " + n + " scheduled. Set each one up the way you want it: when it runs, where it reports, what it focuses on.</div></div>" +
-        '<a class="acvc-pa-btn acvc-pa-ghost" href="https://github.com/harperaa/hermes-personal-automation" target="_blank" rel="noopener">Workshop ↗</a></div>' +
-        (entries.length ? '<div class="acvc-pa-list">' + entries.map(card).join("") + "</div>"
-          : '<p class="acvc-pa-muted">No personal-automation blueprints are installed yet.</p>') +
-        '<div class="acvc-pa-upstream">Below: Hermes’ built-in blueprint gallery.</div>';
+        '<div class="mb-3 flex items-start justify-between gap-3 font-mondwest normal-case">' +
+        '<div><div class="' + UI.label + ' opacity-70">AI Cyber Value Creator™ · Personal Automation</div>' +
+        '<p class="mt-1 text-sm opacity-70">' + entries.length + " blueprints in workshop order, numbered by level — " + n + " scheduled. Set each one up the way you want it: when it runs, where it reports, what it focuses on.</p></div>" +
+        '<a class="' + UI.ghost + '" href="https://github.com/harperaa/hermes-personal-automation" target="_blank" rel="noopener">' + UI.arc + "Workshop ↗</a></div>" +
+        (entries.length ? '<div class="acvc-pa-list grid grid-cols-1 gap-3 md:grid-cols-2">' + entries.map(card).join("") + "</div>"
+          : '<p class="text-sm opacity-70">No personal-automation blueprints are installed yet.</p>') +
+        '<div class="' + UI.label + ' opacity-60 mt-6 mb-3">Hermes built-in blueprints</div>';
     }
     function rerender() {
       var root = document.getElementById(WID);

@@ -339,7 +339,7 @@ def list_blueprints() -> Dict[str, Any]:
     ordered = [by_name.pop(n) for n in CURRICULUM if n in by_name]
     ordered += [by_name[n] for n in sorted(by_name)]
     entries = []
-    for i, e in enumerate(ordered, 1):
+    for i, e in enumerate(ordered):          # numbered from 0 — the level a mentee starts at
         e = _entry_status(e)
         e["number"] = i
         e["curriculum"] = e["name"] in CURRICULUM

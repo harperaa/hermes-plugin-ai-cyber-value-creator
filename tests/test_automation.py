@@ -65,8 +65,8 @@ def _names(res):
 
 def test_list_orders_curriculum_first_then_others(home):
     res = automation.list_blueprints()
-    assert _names(res) == [(1, "secure-box-audit"), (2, "out-the-door-brief"),
-                           (3, "money-watch"), (4, "zeta-extra")]
+    assert _names(res) == [(0, "secure-box-audit"), (1, "out-the-door-brief"),
+                           (2, "money-watch"), (3, "zeta-extra")]
     e = res["entries"][1]
     assert e["title"] == "Out The Door Brief"          # "(Level 2)" stripped
     assert e["level"] == 2 and e["curriculum"] is True
