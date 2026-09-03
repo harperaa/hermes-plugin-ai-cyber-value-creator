@@ -17,6 +17,7 @@ import importlib.util
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 try:
     from fastapi import APIRouter, HTTPException
@@ -596,6 +597,51 @@ def feedback_submit(body: FeedbackBody) -> dict:
                                 body.stuck, body.statusAck,
                                 name=body.name, email=body.email,
                                 next_step=body.nextStep)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=str(result["error"]))
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Personal Automation gallery — installed skill blueprints as editable forms
+# (rendered by the bundle on the Cron page's Blueprints tab)
+# ---------------------------------------------------------------------------
+
+def _automation():
+    import importlib
+    _core()
+    return importlib.import_module(f"{_PKG}.automation")
+
+
+@router.get("/automation/blueprints")
+def automation_blueprints() -> dict:
+    return _automation().list_blueprints()
+
+
+class AutomationScheduleBody(BaseModel):
+    schedule: str = ""
+    deliver: str = ""
+    prompt: Optional[str] = None
+    config: dict = {}
+    model: Optional[str] = None
+
+
+@router.post("/automation/blueprints/{name}/schedule")
+def automation_schedule(name: str, body: AutomationScheduleBody) -> dict:
+    try:
+        result = _automation().schedule_blueprint(
+            name, schedule=body.schedule or None, deliver=body.deliver or None,
+            prompt=body.prompt, config=body.config or {}, model=body.model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=str(result["error"]))
+    return result
+
+
+@router.post("/automation/blueprints/{name}/unschedule")
+def automation_unschedule(name: str) -> dict:
+    result = _automation().unschedule_blueprint(name)
     if result.get("error"):
         raise HTTPException(status_code=400, detail=str(result["error"]))
     return result

@@ -819,3 +819,66 @@
 .acvc-fb-log-coachst { font-size: 11px; opacity: 0.7; margin-top: 2px; }
 .acvc-fb-log-threadrow td { padding-top: 0; }
 .acvc-fb-log-todo, .acvc-fb-log-open { opacity: 0.8; }
+
+/* ---- Personal Automation gallery (Cron > Blueprints) ---- */
+.acvc-pa { margin-bottom: 18px; }
+.acvc-pa-headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.acvc-pa-brand { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #34d399; }
+.acvc-pa-sub { font-size: 13px; opacity: 0.75; margin-top: 3px; line-height: 1.5; }
+.acvc-pa-list { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.acvc-pa-card {
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 14px; background: var(--color-card, transparent); overflow: hidden;
+}
+.acvc-pa-open { border-color: color-mix(in srgb, #34d399 50%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, #34d399 25%, transparent); }
+.acvc-pa-head { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; }
+.acvc-pa-num {
+  flex: 0 0 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 15px; color: #04211c; background: linear-gradient(120deg, #34d399, #a7f3d0);
+}
+.acvc-pa-main { flex: 1; min-width: 0; }
+.acvc-pa-title { font-weight: 800; font-size: 14.5px; }
+.acvc-pa-level { font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle;
+  background: color-mix(in srgb, currentColor 10%, transparent); }
+.acvc-pa-desc { font-size: 13px; opacity: 0.8; margin-top: 2px; line-height: 1.45; }
+.acvc-pa-meta { font-size: 12px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.acvc-pa-st { font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.acvc-pa-st-on { background: color-mix(in srgb, #34d399 28%, transparent); }
+.acvc-pa-st-sug { background: color-mix(in srgb, #f59e0b 28%, transparent); }
+.acvc-pa-st-off { background: color-mix(in srgb, currentColor 10%, transparent); opacity: 0.85; }
+.acvc-pa-fail { color: #ef4444; font-weight: 700; }
+.acvc-pa-muted { opacity: 0.65; font-size: 12px; }
+.acvc-pa-btn {
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: transparent; color: inherit;
+  border-radius: 9px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.acvc-pa-btn:disabled { opacity: 0.5; cursor: default; }
+.acvc-pa-go { border: none; color: #04211c; background: linear-gradient(120deg, #34d399, #a7f3d0); box-shadow: 0 2px 12px rgba(52, 211, 153, 0.35); }
+.acvc-pa-danger { border-color: color-mix(in srgb, #ef4444 50%, transparent); color: #ef4444; }
+.acvc-pa-ghost { border-color: transparent; opacity: 0.8; }
+.acvc-pa-toggle { flex: 0 0 auto; }
+.acvc-pa-form { padding: 4px 14px 14px 60px; border-top: 1px dashed color-mix(in srgb, currentColor 12%, transparent); }
+.acvc-pa-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; margin: 10px 0 8px; }
+.acvc-pa-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.9; }
+.acvc-pa-form label.acvc-pa-block { display: block; margin: 10px 0 4px; }
+.acvc-pa-form select, .acvc-pa-form input[type=text], .acvc-pa-form input[type=number], .acvc-pa-form textarea {
+  font: inherit; font-size: 13.5px; text-transform: none; letter-spacing: 0; font-weight: 500;
+  padding: 6px 9px; border-radius: 8px; color: inherit;
+  background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.acvc-pa-form textarea { width: 100%; box-sizing: border-box; margin-top: 4px; resize: vertical; line-height: 1.45; }
+.acvc-pa-form input[type=number] { width: 70px; }
+.acvc-pa-days { display: flex; gap: 6px; flex-wrap: wrap; }
+.acvc-pa-day { flex-direction: row !important; align-items: center; gap: 4px !important; text-transform: none !important; font-weight: 600 !important; padding: 4px 8px; border-radius: 8px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.acvc-pa-when { font-size: 13px; margin: 2px 0 6px; }
+.acvc-pa-when code { font-size: 12px; opacity: 0.75; margin-left: 4px; }
+.acvc-pa-cfg { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #34d399 6%, transparent); border-left: 3px solid color-mix(in srgb, #34d399 55%, transparent); display: grid; gap: 8px; }
+.acvc-pa-cfg-title { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
+.acvc-pa-cfg label { text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 12.5px; }
+.acvc-pa-cfg label .acvc-pa-muted { font-weight: 500; }
+.acvc-pa-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.acvc-pa-flash { font-size: 12.5px; font-weight: 700; }
+.acvc-pa-flash-ok { color: #34d399; }
+.acvc-pa-flash-err { color: #ef4444; }
+.acvc-pa-upstream { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.55; margin: 16px 0 6px; }
+@media (min-width: 900px) { .acvc-pa-list { grid-template-columns: 1fr; } }

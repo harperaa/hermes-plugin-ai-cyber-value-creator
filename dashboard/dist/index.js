@@ -1236,6 +1236,349 @@
   })();
 
   // -------------------------------------------------------------------------
+  // Personal Automation gallery — rides the Cron page's Blueprints tab.
+  // Every installed skill blueprint (the hermes-personal-automation set in
+  // curriculum order, numbered) becomes an editable form: when it runs,
+  // where it delivers, what it should focus on, and the skill's own settings
+  // (city, file paths…). Schedule creates the same blueprint:<name> job that
+  // /suggestions accept creates; the suggestion list stays as a second door.
+  // -------------------------------------------------------------------------
+  (function personalAutomationGallery() {
+    var WID = "acvc-pa-gallery";
+    var API_PA = "/api/plugins/ai-cyber-value-creator/automation/blueprints";
+    var data = null, loading = false, lastLoad = 0;
+    var open = {};      // name -> true when the form is expanded
+    var drafts = {};    // name -> form state, survives re-injection
+    var busy = {};      // name -> "scheduling" | "removing" | "running"
+    var flash = {};     // name -> {kind, text}
+    var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function esc(v) {
+      return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+    // ---- cron <-> form ------------------------------------------------------
+    function parseCron(expr) {
+      var p = String(expr || "").trim().split(/\s+/);
+      var d = { mode: "custom", hour: 9, minute: 0, dow: [1, 2, 3, 4, 5], dom: 1, every: 4, cron: expr || "" };
+      if (p.length !== 5) return d;
+      var m = p[0], h = p[1], dom = p[2], mon = p[3], dow = p[4];
+      var mh = /^\*\/(\d+)$/.exec(h), mm = /^\*\/(\d+)$/.exec(m);
+      if (/^\d+$/.test(m) && /^\d+$/.test(h)) {
+        d.minute = +m; d.hour = +h;
+        if (dom === "*" && mon === "*") {
+          if (dow === "*") { d.mode = "daily"; return d; }
+          if (dow === "1-5") { d.mode = "weekdays"; return d; }
+          if (/^[0-6](,[0-6])*$/.test(dow)) { d.mode = "weekly"; d.dow = dow.split(",").map(Number); return d; }
+          if (/^\d-\d$/.test(dow)) {
+            var a = +dow[0], b = +dow[2], arr = [];
+            for (var i = a; i <= b; i++) arr.push(i);
+            d.mode = "weekly"; d.dow = arr; return d;
+          }
+        }
+        if (/^\d+$/.test(dom) && mon === "*" && dow === "*") { d.mode = "monthly"; d.dom = +dom; return d; }
+      }
+      if (mh && /^\d+$/.test(m) && dom === "*" && mon === "*" && dow === "*") {
+        d.mode = "hours"; d.every = +mh[1]; d.minute = +m; return d;
+      }
+      if (mm && h === "*" && dom === "*" && mon === "*" && dow === "*") {
+        d.mode = "minutes"; d.every = +mm[1]; return d;
+      }
+      return d;
+    }
+    function buildCron(f) {
+      switch (f.mode) {
+        case "daily": return f.minute + " " + f.hour + " * * *";
+        case "weekdays": return f.minute + " " + f.hour + " * * 1-5";
+        case "weekly": return f.minute + " " + f.hour + " * * " + (f.dow.length ? f.dow.slice().sort().join(",") : "1");
+        case "monthly": return f.minute + " " + f.hour + " " + f.dom + " * *";
+        case "hours": return f.minute + " */" + f.every + " * * *";
+        case "minutes": return "*/" + f.every + " * * * *";
+        default: return f.cron;
+      }
+    }
+    function human(expr) {
+      var f = parseCron(expr);
+      var t = (function () {
+        var h12 = f.hour % 12 || 12;
+        return h12 + ":" + pad(f.minute) + (f.hour < 12 ? " am" : " pm");
+      })();
+      switch (f.mode) {
+        case "daily": return "every day at " + t;
+        case "weekdays": return "weekdays at " + t;
+        case "weekly": return f.dow.map(function (x) { return DOW[x]; }).join(", ") + " at " + t;
+        case "monthly": return "monthly on day " + f.dom + " at " + t;
+        case "hours": return f.every === 1 ? "every hour" : "every " + f.every + " hours";
+        case "minutes": return "every " + f.every + " minutes";
+        default: return expr;
+      }
+    }
+
+    function draftFor(e) {
+      if (drafts[e.name]) return drafts[e.name];
+      var src = e.job || e;   // scheduled -> edit the live job; else the blueprint defaults
+      var f = parseCron(src.schedule);
+      var cfg = {};
+      (e.config || []).forEach(function (c) { cfg[c.key] = c.value; });
+      drafts[e.name] = { sched: f, deliver: src.deliver || e.deliver || "origin",
+        prompt: src.prompt || e.prompt || "", config: cfg };
+      return drafts[e.name];
+    }
+
+    // ---- rendering ----------------------------------------------------------
+    function statusPill(e) {
+      var map = { scheduled: ["Scheduled", "acvc-pa-st-on"], suggested: ["Suggested", "acvc-pa-st-sug"],
+        dismissed: ["Dismissed", "acvc-pa-st-off"], available: ["Not scheduled", "acvc-pa-st-off"] };
+      var m = map[e.status] || map.available;
+      var extra = "";
+      if (e.status === "scheduled" && e.job) {
+        if (e.job.lastStatus && /fail|error/i.test(e.job.lastStatus)) extra = ' <span class="acvc-pa-fail">last run failed</span>';
+        else if (e.job.lastRunAt) extra = ' <span class="acvc-pa-muted">last run ' + esc(new Date(e.job.lastRunAt * 1000).toLocaleString()) + "</span>";
+      }
+      return '<span class="acvc-pa-st ' + m[1] + '">' + m[0] + "</span>" + extra;
+    }
+    function timeOptions(sel) {
+      var out = "";
+      for (var h = 0; h < 24; h++) for (var m = 0; m < 60; m += 15) {
+        var v = h + ":" + m, lab = (h % 12 || 12) + ":" + pad(m) + (h < 12 ? " am" : " pm");
+        out += '<option value="' + v + '"' + (sel.hour === h && sel.minute === m ? " selected" : "") + ">" + lab + "</option>";
+      }
+      return out;
+    }
+    function form(e) {
+      var d = draftFor(e);
+      var f = d.sched;
+      var cron = buildCron(f);
+      var modes = [["weekdays", "Every weekday"], ["daily", "Every day"], ["weekly", "Weekly on…"],
+        ["monthly", "Monthly on day…"], ["hours", "Every N hours"], ["minutes", "Every N minutes"], ["custom", "Custom cron"]];
+      var html = '<div class="acvc-pa-form" data-name="' + esc(e.name) + '">';
+      html += '<div class="acvc-pa-row">';
+      html += '<label>When<select data-f="mode">' + modes.map(function (m) {
+        return '<option value="' + m[0] + '"' + (f.mode === m[0] ? " selected" : "") + ">" + m[1] + "</option>";
+      }).join("") + "</select></label>";
+      if (f.mode === "daily" || f.mode === "weekdays" || f.mode === "weekly" || f.mode === "monthly") {
+        html += '<label>Time<select data-f="time">' + timeOptions(f) + "</select></label>";
+      }
+      if (f.mode === "weekly") {
+        html += '<div class="acvc-pa-days">' + DOW.map(function (n, i) {
+          return '<label class="acvc-pa-day"><input type="checkbox" data-f="dow" value="' + i + '"' +
+            (f.dow.indexOf(i) !== -1 ? " checked" : "") + ">" + n + "</label>";
+        }).join("") + "</div>";
+      }
+      if (f.mode === "monthly") html += '<label>Day of month<input type="number" min="1" max="28" data-f="dom" value="' + f.dom + '"></label>';
+      if (f.mode === "hours") html += '<label>Every<input type="number" min="1" max="23" data-f="every" value="' + f.every + '"> hours</label>';
+      if (f.mode === "minutes") html += '<label>Every<input type="number" min="5" max="59" data-f="every" value="' + f.every + '"> minutes</label>';
+      if (f.mode === "custom") html += '<label>Cron expression<input type="text" data-f="cron" value="' + esc(f.cron) + '" placeholder="m h dom mon dow"></label>';
+      html += '<label>Deliver to<select data-f="deliver">' + (data.deliverOptions || ["origin", "local"]).map(function (o) {
+        var lab = o === "origin" ? "origin (the chat that scheduled it)" : o === "local" ? "local (output file only)" : o;
+        return '<option value="' + esc(o) + '"' + (d.deliver === o ? " selected" : "") + ">" + esc(lab) + "</option>";
+      }).join("") + "</select></label>";
+      html += "</div>";
+      html += '<div class="acvc-pa-when">Runs <b>' + esc(human(cron)) + '</b> <code>' + esc(cron) + "</code>" +
+        (data.serverTz ? ' <span class="acvc-pa-muted">server time zone: ' + esc(data.serverTz) + "</span>" : "") + "</div>";
+      html += '<label class="acvc-pa-block">What it should focus on (the instruction the job runs the skill with)' +
+        '<textarea data-f="prompt" rows="3">' + esc(d.prompt) + "</textarea></label>";
+      if (e.config && e.config.length) {
+        html += '<div class="acvc-pa-cfg"><div class="acvc-pa-cfg-title">Settings for this skill</div>';
+        e.config.forEach(function (c) {
+          html += '<label>' + esc(c.label) + (c.description && c.description !== c.label ? ' <span class="acvc-pa-muted">' + esc(c.description) + "</span>" : "") +
+            '<input type="text" data-cfg="' + esc(c.key) + '" value="' + esc(d.config[c.key] != null ? d.config[c.key] : c.value) + '" placeholder="' + esc(c.default) + '"></label>';
+        });
+        html += "</div>";
+      }
+      var b = busy[e.name];
+      html += '<div class="acvc-pa-actions">';
+      html += '<button type="button" class="acvc-pa-btn acvc-pa-go" data-act="schedule"' + (b ? " disabled" : "") + ">" +
+        (b === "scheduling" ? "Saving…" : e.status === "scheduled" ? "Save changes" : "Schedule") + "</button>";
+      if (e.status === "scheduled" && e.job) {
+        html += '<button type="button" class="acvc-pa-btn" data-act="run"' + (b ? " disabled" : "") + ">" + (b === "running" ? "Running…" : "Run now") + "</button>";
+        html += '<button type="button" class="acvc-pa-btn acvc-pa-danger" data-act="remove"' + (b ? " disabled" : "") + ">" + (b === "removing" ? "Removing…" : "Remove") + "</button>";
+      }
+      html += '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="close">Close</button>';
+      if (flash[e.name]) html += '<span class="acvc-pa-flash acvc-pa-flash-' + flash[e.name].kind + '">' + esc(flash[e.name].text) + "</span>";
+      html += "</div></div>";
+      return html;
+    }
+    function card(e) {
+      var isOpen = !!open[e.name];
+      return '<div class="acvc-pa-card' + (isOpen ? " acvc-pa-open" : "") + '" id="acvc-pa-' + esc(e.name) + '" data-name="' + esc(e.name) + '">' +
+        '<div class="acvc-pa-head">' +
+        '<div class="acvc-pa-num">' + e.number + "</div>" +
+        '<div class="acvc-pa-main"><div class="acvc-pa-title">' + esc(e.title) +
+        (e.level != null ? ' <span class="acvc-pa-level">Level ' + e.level + "</span>" : "") + "</div>" +
+        '<div class="acvc-pa-desc">' + esc(e.description) + "</div>" +
+        '<div class="acvc-pa-meta">' + statusPill(e) +
+        ' <span class="acvc-pa-muted">· ' + esc(e.job ? e.job.scheduleHuman : e.scheduleHuman) + "</span></div></div>" +
+        '<button type="button" class="acvc-pa-btn acvc-pa-toggle" data-act="toggle">' +
+        (isOpen ? "Cancel" : e.status === "scheduled" ? "Edit" : "Set up") + "</button>" +
+        "</div>" + (isOpen ? form(e) : "") + "</div>";
+    }
+    function render(root) {
+      var entries = (data && data.entries) || [];
+      var n = entries.filter(function (e) { return e.status === "scheduled"; }).length;
+      root.innerHTML =
+        '<div class="acvc-pa-headline"><div><div class="acvc-pa-brand">AI CYBER VALUE CREATOR™ · PERSONAL AUTOMATION</div>' +
+        '<div class="acvc-pa-sub">' + entries.length + " blueprints in workshop order — " + n + " scheduled. Set each one up the way you want it: when it runs, where it reports, what it focuses on.</div></div>" +
+        '<a class="acvc-pa-btn acvc-pa-ghost" href="https://github.com/harperaa/hermes-personal-automation" target="_blank" rel="noopener">Workshop ↗</a></div>' +
+        (entries.length ? '<div class="acvc-pa-list">' + entries.map(card).join("") + "</div>"
+          : '<p class="acvc-pa-muted">No personal-automation blueprints are installed yet.</p>') +
+        '<div class="acvc-pa-upstream">Below: Hermes’ built-in blueprint gallery.</div>';
+    }
+    function rerender() {
+      var root = document.getElementById(WID);
+      if (root) render(root);
+    }
+
+    // ---- state from the DOM -------------------------------------------------
+    function readForm(name) {
+      var el = document.querySelector('#' + WID + ' .acvc-pa-form[data-name="' + name + '"]');
+      var d = drafts[name];
+      if (!el || !d) return d;
+      var f = d.sched;
+      var mode = el.querySelector('[data-f="mode"]');
+      if (mode) f.mode = mode.value;
+      var time = el.querySelector('[data-f="time"]');
+      if (time) { var t = time.value.split(":"); f.hour = +t[0]; f.minute = +t[1]; }
+      var dows = el.querySelectorAll('[data-f="dow"]');
+      if (dows.length) f.dow = [].filter.call(dows, function (c) { return c.checked; }).map(function (c) { return +c.value; });
+      var dom = el.querySelector('[data-f="dom"]'); if (dom) f.dom = Math.min(28, Math.max(1, +dom.value || 1));
+      var ev = el.querySelector('[data-f="every"]'); if (ev) f.every = Math.max(1, +ev.value || 1);
+      var cr = el.querySelector('[data-f="cron"]'); if (cr) f.cron = cr.value;
+      var dl = el.querySelector('[data-f="deliver"]'); if (dl) d.deliver = dl.value;
+      var pr = el.querySelector('[data-f="prompt"]'); if (pr) d.prompt = pr.value;
+      [].forEach.call(el.querySelectorAll("[data-cfg]"), function (i) { d.config[i.getAttribute("data-cfg")] = i.value; });
+      return d;
+    }
+
+    // ---- actions -------------------------------------------------------------
+    function entryByName(name) {
+      return ((data && data.entries) || []).filter(function (e) { return e.name === name; })[0];
+    }
+    function replaceEntry(entry) {
+      if (!data || !entry) return;
+      data.entries = data.entries.map(function (e) { return e.name === entry.name ? Object.assign({ number: e.number, curriculum: e.curriculum }, entry) : e; });
+    }
+    function say(name, kind, text) {
+      flash[name] = { kind: kind, text: text };
+      rerender();
+      setTimeout(function () { if (flash[name] && flash[name].text === text) { delete flash[name]; rerender(); } }, 6000);
+    }
+    function doSchedule(name) {
+      var d = readForm(name);
+      var body = { schedule: buildCron(d.sched), deliver: d.deliver, prompt: d.prompt, config: d.config };
+      busy[name] = "scheduling"; rerender();
+      SDK.fetchJSON(API_PA + "/" + encodeURIComponent(name) + "/schedule", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      }).then(function (r) {
+        delete busy[name];
+        if (r && r.entry) { replaceEntry(r.entry); delete drafts[name]; }
+        say(name, "ok", "Scheduled — " + (r && r.entry && r.entry.job ? r.entry.job.scheduleHuman : ""));
+        acvcBurstConfetti();
+        notifyHost();
+      }).catch(function (err) {
+        delete busy[name];
+        say(name, "err", String((err && err.message) || err).replace(/^\d+:\s*/, ""));
+      });
+    }
+    function doRemove(name) {
+      busy[name] = "removing"; rerender();
+      SDK.fetchJSON(API_PA + "/" + encodeURIComponent(name) + "/unschedule", { method: "POST" })
+        .then(function (r) {
+          delete busy[name];
+          if (r && r.entry) { replaceEntry(r.entry); delete drafts[name]; }
+          say(name, "ok", "Removed — it is back in /suggestions if you want it later");
+          notifyHost();
+        }).catch(function (err) { delete busy[name]; say(name, "err", String((err && err.message) || err)); });
+    }
+    function doRun(name) {
+      var e = entryByName(name);
+      if (!e || !e.job) return;
+      busy[name] = "running"; rerender();
+      SDK.fetchJSON("/api/cron/jobs/" + encodeURIComponent(e.job.id) + "/run", { method: "POST" })
+        .then(function () { delete busy[name]; say(name, "ok", "Queued — it runs on the next scheduler tick; see the Jobs tab"); notifyHost(); })
+        .catch(function (err) { delete busy[name]; say(name, "err", String((err && err.message) || err)); });
+    }
+    function notifyHost() {
+      // the Jobs tab reloads on popstate; nudge it so a fresh job shows up
+      try { window.dispatchEvent(new Event("popstate")); } catch (e) {}
+      lastLoad = 0;
+    }
+    function onClick(ev) {
+      var btn = ev.target.closest && ev.target.closest("[data-act]");
+      if (!btn) return;
+      var cardEl = btn.closest(".acvc-pa-card");
+      var name = cardEl && cardEl.getAttribute("data-name");
+      if (!name) return;
+      ev.preventDefault();
+      var act = btn.getAttribute("data-act");
+      if (act === "toggle") { readForm(name); open[name] = !open[name]; rerender(); }
+      else if (act === "close") { readForm(name); open[name] = false; rerender(); }
+      else if (act === "schedule") doSchedule(name);
+      else if (act === "remove") doRemove(name);
+      else if (act === "run") doRun(name);
+    }
+    function onChange(ev) {
+      var el = ev.target;
+      if (!el || !el.getAttribute) return;
+      var f = el.getAttribute("data-f");
+      var cardEl = el.closest && el.closest(".acvc-pa-card");
+      if (!cardEl) return;
+      var name = cardEl.getAttribute("data-name");
+      readForm(name);
+      // the schedule row changes shape with the mode; text fields keep focus
+      if (f === "mode" || f === "time" || f === "dow" || f === "dom" || f === "every" || f === "cron") rerender();
+    }
+
+    // ---- mounting -------------------------------------------------------------
+    function galleryAnchor() {
+      // The upstream gallery grid (cards with a "Set up" button) or its empty
+      // state; both live under <main> once the Blueprints segment is active.
+      var main = document.querySelector("main") || document.body;
+      var grids = [].slice.call(main.querySelectorAll("div.grid"));
+      for (var i = 0; i < grids.length; i++) {
+        var g = grids[i];
+        if (/md:grid-cols-2/.test(g.className) && g.querySelector("button") && !g.closest("#" + WID)) return g;
+      }
+      var ps = [].slice.call(main.querySelectorAll("p"));
+      for (var j = 0; j < ps.length; j++) if (/No automation blueprints available/.test(ps[j].textContent)) return ps[j];
+      return null;
+    }
+    function load(force) {
+      if (loading) return;
+      if (!force && data && Date.now() - lastLoad < 30000) return;
+      loading = true;
+      SDK.fetchJSON(API_PA).then(function (d) {
+        loading = false; lastLoad = Date.now(); data = d; rerender();
+      }, function () { loading = false; setTimeout(function () { lastLoad = Date.now() - 20000; }, 10000); });
+    }
+    function tick() {
+      var onPage = window.location.pathname === "/cron";
+      var existing = document.getElementById(WID);
+      var anchor = onPage ? galleryAnchor() : null;
+      if (!anchor) { if (existing) existing.remove(); return; }
+      if (existing && existing.nextSibling === anchor) { load(false); return; }
+      if (existing) existing.remove();
+      var root = document.createElement("div");
+      root.id = WID;
+      root.className = "acvc-pa";
+      root.addEventListener("click", onClick);
+      root.addEventListener("change", onChange);
+      root.addEventListener("input", function (ev) {
+        var el = ev.target; var f = el && el.getAttribute && el.getAttribute("data-f");
+        if (f === "prompt" || el.getAttribute("data-cfg") != null) { var c = el.closest(".acvc-pa-card"); if (c) readForm(c.getAttribute("data-name")); }
+      });
+      anchor.parentNode.insertBefore(root, anchor);
+      if (data) render(root); else root.innerHTML = '<div class="acvc-pa-muted">Loading your personal automation blueprints…</div>';
+      load(true);
+    }
+    window.addEventListener("popstate", tick);
+    setInterval(tick, 800);
+    tick();
+  })();
+
+  // -------------------------------------------------------------------------
   // Accomplishments widget — rides the hermes Achievements page (/achievements)
   // and shows program progress for every AI Cyber Value Creator™ plugin.
   // Data comes from this plugin's /accomplishments aggregator.
