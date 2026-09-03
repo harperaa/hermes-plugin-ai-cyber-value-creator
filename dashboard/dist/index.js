@@ -1258,6 +1258,12 @@
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
     function pad(n) { return (n < 10 ? "0" : "") + n; }
+    // cron job timestamps are ISO strings upstream; tolerate epoch seconds/ms too
+    function fmtTs(v) {
+      if (v == null || v === "") return "";
+      var d = typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v);
+      return isNaN(d.getTime()) ? String(v) : d.toLocaleString();
+    }
 
     // ---- cron <-> form ------------------------------------------------------
     function parseCron(expr) {
@@ -1335,7 +1341,7 @@
       var extra = "";
       if (e.status === "scheduled" && e.job) {
         if (e.job.lastStatus && /fail|error/i.test(e.job.lastStatus)) extra = ' <span class="acvc-pa-fail">last run failed</span>';
-        else if (e.job.lastRunAt) extra = ' <span class="acvc-pa-muted">last run ' + esc(new Date(e.job.lastRunAt * 1000).toLocaleString()) + "</span>";
+        else if (e.job.lastRunAt) extra = ' <span class="acvc-pa-muted">last run ' + esc(fmtTs(e.job.lastRunAt)) + "</span>";
       }
       return '<span class="acvc-pa-st ' + m[1] + '">' + m[0] + "</span>" + extra;
     }
@@ -1372,7 +1378,10 @@
       if (f.mode === "minutes") html += '<label>Every<input type="number" min="5" max="59" data-f="every" value="' + f.every + '"> minutes</label>';
       if (f.mode === "custom") html += '<label>Cron expression<input type="text" data-f="cron" value="' + esc(f.cron) + '" placeholder="m h dom mon dow"></label>';
       html += '<label>Deliver to<select data-f="deliver">' + (data.deliverOptions || ["origin", "local"]).map(function (o) {
-        var lab = o === "origin" ? "origin (the chat that scheduled it)" : o === "local" ? "local (output file only)" : o;
+        var lab = o === "origin" ? "origin — the chat it was accepted from; from this page: your home channel, else the output file"
+          : o === "local" ? "local — output file only (see the Jobs tab)"
+          : /^bot-chat/.test(o) ? o + " — hand the output to this instance's Bot Chat as a new turn (the bot acts on it)"
+          : o + " — post to this platform's home channel";
         return '<option value="' + esc(o) + '"' + (d.deliver === o ? " selected" : "") + ">" + esc(lab) + "</option>";
       }).join("") + "</select></label>";
       html += "</div>";
@@ -1393,7 +1402,7 @@
       html += '<button type="button" class="acvc-pa-btn acvc-pa-go" data-act="schedule"' + (b ? " disabled" : "") + ">" +
         (b === "scheduling" ? "Saving…" : e.status === "scheduled" ? "Save changes" : "Schedule") + "</button>";
       if (e.status === "scheduled" && e.job) {
-        html += '<button type="button" class="acvc-pa-btn" data-act="run"' + (b ? " disabled" : "") + ">" + (b === "running" ? "Running…" : "Run now") + "</button>";
+        html += '<button type="button" class="acvc-pa-btn" data-act="run"' + (b ? " disabled" : "") + ' title="Runs the job right now and waits for it to finish — a full run can take a few minutes">' + (b === "running" ? "Running… (can take minutes)" : "Run now") + "</button>";
         html += '<button type="button" class="acvc-pa-btn acvc-pa-danger" data-act="remove"' + (b ? " disabled" : "") + ">" + (b === "removing" ? "Removing…" : "Remove") + "</button>";
       }
       html += '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="close">Close</button>';
@@ -1460,6 +1469,11 @@
       if (!data || !entry) return;
       data.entries = data.entries.map(function (e) { return e.name === entry.name ? Object.assign({ number: e.number, curriculum: e.curriculum }, entry) : e; });
     }
+    function errText(err) {
+      var m = String((err && err.message) || err || "").replace(/^\d+:\s*/, "");
+      try { var j = JSON.parse(m); if (j && j.detail) m = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch (e) {}
+      return m;
+    }
     function say(name, kind, text) {
       flash[name] = { kind: kind, text: text };
       rerender();
@@ -1479,7 +1493,7 @@
         notifyHost();
       }).catch(function (err) {
         delete busy[name];
-        say(name, "err", String((err && err.message) || err).replace(/^\d+:\s*/, ""));
+        say(name, "err", errText(err));
       });
     }
     function doRemove(name) {
@@ -1490,15 +1504,23 @@
           if (r && r.entry) { replaceEntry(r.entry); delete drafts[name]; }
           say(name, "ok", "Removed — it is back in /suggestions if you want it later");
           notifyHost();
-        }).catch(function (err) { delete busy[name]; say(name, "err", String((err && err.message) || err)); });
+        }).catch(function (err) { delete busy[name]; say(name, "err", errText(err)); });
     }
     function doRun(name) {
       var e = entryByName(name);
       if (!e || !e.job) return;
       busy[name] = "running"; rerender();
-      SDK.fetchJSON("/api/cron/jobs/" + encodeURIComponent(e.job.id) + "/run", { method: "POST" })
-        .then(function () { delete busy[name]; say(name, "ok", "Queued — it runs on the next scheduler tick; see the Jobs tab"); notifyHost(); })
-        .catch(function (err) { delete busy[name]; say(name, "err", String((err && err.message) || err)); });
+      // upstream runs the job inline and answers when it has finished
+      SDK.fetchJSON("/api/cron/jobs/" + encodeURIComponent(e.job.id) + "/trigger", { method: "POST" })
+        .then(function (job) {
+          delete busy[name];
+          var st = (job && job.last_status) || "done";
+          if (e.job && job) { e.job.lastStatus = job.last_status; e.job.lastRunAt = job.last_run_at; }
+          say(name, /fail|error/i.test(st) ? "err" : "ok", "Ran — " + st + ". Output is under the Jobs tab" +
+            (e.job && e.job.deliver && e.job.deliver !== "local" ? " and was delivered to " + e.job.deliver : "") + ".");
+          notifyHost();
+        })
+        .catch(function (err) { delete busy[name]; say(name, "err", errText(err)); });
     }
     function notifyHost() {
       // the Jobs tab reloads on popstate; nudge it so a fresh job shows up
