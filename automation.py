@@ -119,6 +119,8 @@ INPUT_FILES: Dict[str, Dict[str, Any]] = {
                                         "hint": "plain sentences: allergies, equipment, how many vegetarian nights, time limits"},
     "quiet_inbox.commitments_path": {"kind": "file", "files": [{"name": "", "template": _T_COMMITMENTS}],
                                      "hint": "one line per promise: - [ ] what | to whom | by when | channel"},
+    "out_the_door.calendar_path": {"kind": "file", "files": [{"name": "", "template": _T_CALENDAR}],
+                                   "hint": "one line: today's fixed commitments with times, e.g. 09:00 team standup; 14:00 dentist"},
     "morning_standup.ledger_path": {"kind": "dir", "files": [{"name": "commitments.md", "template": _T_COMMITMENTS},
                                                             {"name": "today-calendar.md", "template": _T_CALENDAR}],
                                     "hint": "a folder other jobs drop files into; today-calendar.md and commitments.md are the ones it reads first"},
