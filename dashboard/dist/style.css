@@ -895,3 +895,4 @@
 .acvc-pa-chip-new { border-style: dashed; opacity: 0.85; }
 .acvc-pa-newfile { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
 .acvc-pa-newfile input { font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 8px; width: 150px; color: inherit; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.acvc-pa-starters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 8px; }

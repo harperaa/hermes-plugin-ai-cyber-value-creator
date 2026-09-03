@@ -1458,7 +1458,13 @@
         html += '<span class="acvc-pa-newfile"><input type="text" placeholder="new-file.md" data-newfile="' + esc(c.key) + '">' +
           '<button type="button" class="acvc-pa-btn acvc-pa-ghost" data-act="new-file" data-key="' + esc(c.key) + '">Add</button></span>';
         html += "</div>";
-        if (!st.file) return html + '<div class="acvc-pa-muted">Pick a file to edit' + (starters.length ? ", or one of the suggested starters" : "") + ".</div></div>";
+        if (starters.length) {
+          html += '<div class="acvc-pa-starters"><button type="button" class="acvc-pa-btn" data-act="create-starters" data-key="' + esc(c.key) + '"' + (st.creating ? " disabled" : "") + ">" +
+            (st.creating ? "Creating…" : "Create the " + starters.length + " starter file" + (starters.length === 1 ? "" : "s") + " (sample data)") + "</button>" +
+            ' <span class="acvc-pa-muted">Dashed chips are examples we ship — create them all, then edit or delete what you like.</span></div>';
+        }
+        if (!st.file) return html + '<div class="acvc-pa-muted">Pick a file to edit' + (starters.length ? ", or one of the suggested starters" : "") + ".</div>" +
+          (st.msg ? '<div class="acvc-pa-flash acvc-pa-flash-' + st.msg.kind + '">' + esc(st.msg.text) + "</div>" : "") + "</div>";
       }
       var full = c.kind === "dir" ? joinPath(base, st.file) : base;
       if (st.fileLoading) return html + '<div class="acvc-pa-editor-head"><b>' + esc(full) + '</b> <span class="acvc-pa-muted">loading…</span></div></div>';
@@ -1523,6 +1529,29 @@
         })
         .catch(function (err) { st.saving = false; st.msg = { kind: "err", text: errText(err) }; rerender(); });
     }
+    function createStarters(name, key) {
+      var st = edState(name, key);
+      var c = cfgFor(name, key);
+      if (!c) return;
+      var existing = ((st.info && st.info.files) || []).map(function (f) { return f.name; });
+      var todo = (c.files || []).filter(function (f) { return existing.indexOf(f.name) === -1; });
+      if (!todo.length) return;
+      var base = basePath(name, key);
+      st.creating = true; rerender();
+      var chain = Promise.resolve();
+      todo.forEach(function (f) {
+        chain = chain.then(function () {
+          return SDK.fetchJSON(API_FILE, { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: joinPath(base, f.name), content: f.template }) });
+        });
+      });
+      chain.then(function () {
+        return SDK.fetchJSON(API_FILE + "?path=" + encodeURIComponent(base));
+      }).then(function (info) {
+        st.creating = false; st.info = info; st.msg = { kind: "ok", text: "Created " + todo.length + " starter file" + (todo.length === 1 ? "" : "s") };
+        if (!st.file) loadFile(name, key, todo[0].name); else rerender();
+      }).catch(function (err) { st.creating = false; st.msg = { kind: "err", text: errText(err) }; rerender(); });
+    }
     function onEditorClick(act, name, btn) {
       var key = btn.getAttribute("data-key");
       var st = edState(name, key);
@@ -1538,6 +1567,8 @@
         var rel = inp && inp.value.trim().replace(/^\/+/, "");
         if (!rel) return;
         loadFile(name, key, rel);
+      } else if (act === "create-starters") {
+        createStarters(name, key);
       } else if (act === "save-file") {
         saveFile(name, key);
       } else if (act === "reset-file") {
@@ -1669,7 +1700,7 @@
       if (!name) return;
       ev.preventDefault();
       var act = btn.getAttribute("data-act");
-      if (act === "edit-file" || act === "open-file" || act === "new-file" || act === "save-file" || act === "reset-file") { readForm(name); onEditorClick(act, name, btn); return; }
+      if (/^(edit-file|open-file|new-file|save-file|reset-file|create-starters)$/.test(act)) { readForm(name); onEditorClick(act, name, btn); return; }
       if (act === "toggle") { readForm(name); open[name] = !open[name]; rerender(); }
       else if (act === "close") { readForm(name); open[name] = false; Object.keys(editors).forEach(function (k) { if (k.indexOf(name + "|") === 0) editors[k].open = false; }); rerender(); }
       else if (act === "schedule") doSchedule(name);

@@ -72,6 +72,39 @@ _T_PERSON = (
     "- 2026-03-01 — Called. New job at a logistics startup. Nervous about managing people.\n"
     "- 2026-01-14 — Mentioned wanting a proper chef's knife. Owns none.\n"
 )
+_T_PERSON_2 = (
+    "---\n"
+    "name: Priya Natarajan\n"
+    "birthday: 1991-11-02\n"
+    "last_contact: 2026-08-20\n"
+    "---\n"
+    "- 2026-08-20 — Coffee. Training for a half marathon in October; asked about my Sunday ledger habit.\n"
+    "- 2026-05-03 — Her mom had surgery; recovering well. Follow up before Thanksgiving.\n"
+)
+_T_PERSON_3 = (
+    "---\n"
+    "name: Marcus Bell\n"
+    "birthday: 1979-01-27\n"
+    "last_contact: 2025-12-15\n"
+    "---\n"
+    "- 2025-12-15 — Holiday call. Talked about selling the boat and finally taking the Portugal trip.\n"
+    "- 2025-09-08 — Sent him the vCISO offer outline; he offered an intro to two MSP owners.\n"
+)
+_T_PERSON_4 = (
+    "---\n"
+    "name: Dana Whitfield\n"
+    "birthday: 1985-06-18\n"
+    "last_contact: 2026-09-01\n"
+    "---\n"
+    "- 2026-09-01 — Text. Kids back in school; she is picking up piano again.\n"
+    "- 2026-06-18 — Birthday dinner. Loved the ramen place; wants to try the omakase next time.\n"
+)
+_PEOPLE_STARTERS = [
+    {"name": "people/sam-okafor.md", "template": _T_PERSON},
+    {"name": "people/priya-natarajan.md", "template": _T_PERSON_2},
+    {"name": "people/marcus-bell.md", "template": _T_PERSON_3},
+    {"name": "people/dana-whitfield.md", "template": _T_PERSON_4},
+]
 
 INPUT_FILES: Dict[str, Dict[str, Any]] = {
     "expiry_desk.renewals_path": {"kind": "file", "files": [{"name": "", "template": _T_RENEWALS}],
@@ -91,12 +124,11 @@ INPUT_FILES: Dict[str, Dict[str, Any]] = {
                                     "hint": "a folder other jobs drop files into; today-calendar.md and commitments.md are the ones it reads first"},
     "quiet_inbox.drafts_path": {"kind": "dir", "files": [],
                                 "hint": "the job writes draft replies here as separate files; nothing to prepare"},
-    "people_file.vault_path": {"kind": "dir", "files": [{"name": "people/sam-okafor.md", "template": _T_PERSON}],
-                               "hint": "one markdown file per person under people/, with name, birthday and last_contact in the front matter"},
+    "people_file.vault_path": {"kind": "dir", "files": list(_PEOPLE_STARTERS),
+                               "hint": "one markdown file per person under people/, with name, birthday and last_contact in the front matter — four sample people are offered as starters"},
     "sunday_ledger.vault_path": {"kind": "dir", "files": [{"name": "renewals.csv", "template": _T_RENEWALS},
                                                          {"name": "purchases.md", "template": _T_PURCHASES},
-                                                         {"name": "ledger/commitments.md", "template": _T_COMMITMENTS},
-                                                         {"name": "people/sam-okafor.md", "template": _T_PERSON}],
+                                                         {"name": "ledger/commitments.md", "template": _T_COMMITMENTS}] + list(_PEOPLE_STARTERS),
                                  "hint": "the whole life folder: renewals.csv, purchases.md, ledger/commitments.md, people/"},
 }
 
