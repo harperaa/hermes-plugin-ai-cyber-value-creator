@@ -805,3 +805,17 @@
 .acvc-fb-log-done, .acvc-fb-log-complete { background: color-mix(in srgb, #34d399 25%, transparent); }
 .acvc-fb-log-in_progress, .acvc-fb-log-active { background: color-mix(in srgb, #f59e0b 25%, transparent); }
 .acvc-fb-log-empty { font-size: 12.5px; color: var(--color-muted-foreground, #9aa0b4); padding: 4px 0; }
+.acvc-fb-log-ul { margin: 2px 0 0 18px; padding: 0; font-size: 13px; line-height: 1.5; }
+.acvc-fb-log-thread { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 4px; }
+.acvc-fb-log-msg {
+  max-width: 92%; padding: 7px 11px; border-radius: 12px; font-size: 13px; line-height: 1.5;
+  background: color-mix(in srgb, currentColor 7%, transparent); white-space: pre-wrap; word-break: break-word;
+}
+.acvc-fb-log-msg-me { align-self: flex-end; background: color-mix(in srgb, #34d399 16%, transparent); }
+.acvc-fb-log-msg-role { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; margin-bottom: 2px; }
+.acvc-fb-log-verdict { padding: 2px 0 4px 10px; border-left: 2px solid color-mix(in srgb, currentColor 15%, transparent); }
+.acvc-fb-log-rx > summary { font-weight: 600; }
+.acvc-fb-log-phase { font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; margin-right: 4px; }
+.acvc-fb-log-coachst { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+.acvc-fb-log-threadrow td { padding-top: 0; }
+.acvc-fb-log-todo, .acvc-fb-log-open { opacity: 0.8; }

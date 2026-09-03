@@ -149,13 +149,23 @@ def _level_detail() -> dict:
                    "proof": i.get("proof"), "status": i.get("status"),
                    "attempts": i.get("attempts")}
                   for i in items if i.get("status") != "done"]
+    checklist = data.get("checklist") or {}
     return {
         "level": data.get("level"),
         "badges": data.get("badges") or [],
+        "assessment": data.get("assessment"),
         "verdicts": data.get("history") or [],   # rationale, strengths, gaps,
                                                  # security/ai/coding notes,
-                                                 # ladders, transcripts
-        "checklistTarget": (data.get("checklist") or {}).get("targetLevel"),
+                                                 # ladders, full examiner
+                                                 # transcript (chat thread)
+        "checklistTarget": checklist.get("targetLevel"),
+        # The prescription, verbatim: every item with its advice, references,
+        # challenge, proof requirement, evidence and attempts.
+        "prescription": {
+            "targetLevel": checklist.get("targetLevel"),
+            "createdAt": checklist.get("createdAt"),
+            "items": [dict(i) for i in items if isinstance(i, dict)],
+        },
         "closedItems": closed,
         "openItems": open_items,
     }

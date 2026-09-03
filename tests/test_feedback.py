@@ -24,6 +24,7 @@ if PKG not in sys.modules:
 
 feedback = importlib.import_module(f"{PKG}.feedback")
 progress = importlib.import_module(f"{PKG}.progress")
+coach = importlib.import_module(f"{PKG}.coach")
 
 
 @pytest.fixture()
@@ -89,9 +90,27 @@ def test_submit_assembles_and_posts(home):
     (vcl / "state.json").write_text(json.dumps({
         "level": 2,
         "badges": [{"level": 2, "name": "The Listener", "emoji": "👂"}],
-        "checklist": {"items": [{"status": "done"}, {"status": "open"}]},
+        "assessment": "Solid listener, thin on metrics.",
+        "checklist": {"targetLevel": 3, "createdAt": 1756000000, "items": [
+            {"id": "rx-1", "status": "done", "text": "Interview 5 ICP buyers",
+             "advice": "Use the 3-question script", "references": ["Mom Test ch.2"],
+             "challenge": "Name the 5", "proof": "call notes", "evidence": "5 notes attached",
+             "attempts": 1},
+            {"id": "rx-2", "status": "open", "text": "Publish 3 posts",
+             "advice": "One insight per post", "references": [], "proof": "links"}]},
+        "history": [{"at": 1756100000, "level": 2, "mode": "exam", "rationale": "Clear ICP",
+                     "strengths": ["specific"], "gaps": ["no metrics"],
+                     "ladders": {"security": {"rung": 2, "misses": [], "retried": 0}},
+                     "transcript": [{"role": "examiner", "text": "What are you building?"},
+                                    {"role": "mentee", "text": "A vCISO offer for MSPs"}]}],
     }))
     progress.mark_step_status("create-value-icp", "done")
+    # a coach chat thread on that step — must travel with the report
+    cst = coach.load_state()
+    cst["steps"]["create-value-icp"] = {"status": "done", "summary": "Mid-market MSPs",
+        "messages": [{"role": "coach", "text": "Who exactly do you serve?"},
+                     {"role": "mentee", "text": "MSPs with 20-200 seats"}]}
+    coach.save_state(cst)
 
     sent = {}
 
@@ -141,6 +160,25 @@ def test_submit_assembles_and_posts(home):
     assert e["sentiment"] == "yellow" and e["nextStep"] == "call two more brokers"
     assert e["level"] == 2 and e["roadmapDone"] == 1
     assert e["detail"]["level"]["level"] == 2
+    # everything the level plugin knows travels: assessment, verdicts with
+    # the examiner transcript + ladders, and the prescription verbatim
+    lv = e["detail"]["level"]
+    assert lv["assessment"] == "Solid listener, thin on metrics."
+    v = lv["verdicts"][0]
+    assert v["rationale"] == "Clear ICP" and v["ladders"]["security"]["rung"] == 2
+    assert v["transcript"][1] == {"role": "mentee", "text": "A vCISO offer for MSPs"}
+    rx = lv["prescription"]
+    assert rx["targetLevel"] == 3 and len(rx["items"]) == 2
+    assert rx["items"][0]["advice"] == "Use the 3-question script"
+    assert rx["items"][0]["references"] == ["Mom Test ch.2"]
+    assert rx["items"][0]["evidence"] == "5 notes attached"
+    assert rx["items"][1]["status"] == "open"
+    # roadmap: every step with its coach chat thread
+    steps = e["detail"]["roadmap"]["steps"]
+    icp = [s for s in steps if s["id"] == "create-value-icp"][0]
+    assert icp["progress"] == "done" and icp["summary"] == "Mid-market MSPs"
+    assert icp["thread"][1] == {"role": "mentee", "text": "MSPs with 20-200 seats"}
+    assert e["detail"]["roadmap"]["companyContext"] is not None
     assert any(s.get("id") == "create-value-icp" or s.get("step") == "create-value-icp"
                for s in e["detail"]["roadmap"].get("steps", []))
     assert e["at"] == st["lastSubmittedAt"]

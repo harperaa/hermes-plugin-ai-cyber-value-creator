@@ -893,30 +893,100 @@
         '</div><div class="acvc-fb-log-v' + (pre ? " acvc-fb-log-pre" : "") + '">' +
         esc(value) + "</div></div>";
     }
+    function renderThread(msgs, label) {
+      if (!msgs || !msgs.length) return "";
+      var html = '<details class="acvc-fb-log-sub"><summary>' + esc(label || "Chat thread") +
+        " (" + msgs.length + (msgs.length === 1 ? " message" : " messages") + ')</summary><div class="acvc-fb-log-thread">';
+      msgs.forEach(function (m) {
+        var role = String((m && (m.role || m.from)) || "");
+        var mine = /mentee|user|builder|you/i.test(role);
+        html += '<div class="acvc-fb-log-msg' + (mine ? " acvc-fb-log-msg-me" : "") + '">' +
+          '<div class="acvc-fb-log-msg-role">' + esc(role || "message") + "</div>" +
+          '<div class="acvc-fb-log-msg-text">' + esc((m && (m.text || m.content)) || "") + "</div></div>";
+      });
+      return html + "</div></details>";
+    }
+    function listField(label, arr) {
+      if (!arr || !arr.length) return "";
+      return '<div class="acvc-fb-log-field"><div class="acvc-fb-log-k">' + esc(label) + "</div><ul class=\"acvc-fb-log-ul\">" +
+        arr.map(function (x) { return "<li>" + esc(typeof x === "string" ? x : JSON.stringify(x)) + "</li>"; }).join("") +
+        "</ul></div>";
+    }
+    function renderLadders(ld) {
+      if (!ld || typeof ld !== "object") return "";
+      var keys = Object.keys(ld);
+      if (!keys.length) return "";
+      var html = '<div class="acvc-fb-log-k">Ladders</div><table class="acvc-fb-log-table"><thead><tr><th>Dimension</th><th>Rung</th><th>Misses</th><th>Retried</th></tr></thead><tbody>';
+      keys.forEach(function (k) {
+        var v = ld[k] || {};
+        html += "<tr><td>" + esc(k) + "</td><td>" + esc(v.rung != null ? v.rung : "") + "</td><td>" +
+          esc(Array.isArray(v.misses) ? v.misses.join("; ") : (v.misses != null ? v.misses : "")) +
+          "</td><td>" + esc(v.retried != null ? v.retried : "") + "</td></tr>";
+      });
+      return html + "</tbody></table>";
+    }
+    function renderVerdict(v) {
+      var head = [v.at ? fmtWhen(v.at) : "", v.level != null ? "level " + v.level : "",
+                  v.verdict || v.result || v.mode || ""].filter(Boolean).join(" · ");
+      return '<details class="acvc-fb-log-sub"><summary>' + esc(head || "verdict") + "</summary>" +
+        '<div class="acvc-fb-log-verdict">' +
+        field("Rationale", v.rationale, true) +
+        listField("Strengths", v.strengths) +
+        listField("Gaps", v.gaps) +
+        field("Security notes", v.securityNotes, true) +
+        field("AI notes", v.aiNotes, true) +
+        field("Coding notes", v.codingNotes, true) +
+        renderLadders(v.ladders) +
+        renderThread(v.transcript, "Examiner transcript") +
+        '<details class="acvc-fb-log-sub"><summary>Raw verdict record</summary><pre class="acvc-fb-log-json">' +
+        esc(JSON.stringify(v, null, 2)) + "</pre></details>" +
+        "</div></details>";
+    }
+    function renderPrescription(rx, fallbackClosed, fallbackOpen) {
+      var items = (rx && rx.items) || [];
+      if (!items.length && (fallbackClosed || fallbackOpen)) {
+        items = (fallbackClosed || []).map(function (i) { i = Object.assign({}, i); i.status = "done"; return i; })
+          .concat(fallbackOpen || []);
+      }
+      if (!items.length) return "";
+      var html = '<div class="acvc-fb-log-k">Prescription' +
+        (rx && rx.targetLevel != null ? " — toward level " + esc(rx.targetLevel) : "") +
+        " (" + items.length + " items)</div>";
+      items.forEach(function (it) {
+        var st = String(it.status || "open");
+        html += '<details class="acvc-fb-log-sub acvc-fb-log-rx"><summary>' +
+          '<span class="acvc-fb-log-status acvc-fb-log-' + esc(st) + '">' + esc(st) + "</span> " +
+          esc(it.text || it.id || "item") + "</summary>" +
+          field("Advice", it.advice, true) +
+          field("Challenge", it.challenge, true) +
+          field("Proof required", it.proof, true) +
+          field("Evidence submitted", it.evidence, true) +
+          listField("References", it.references) +
+          (it.attempts != null ? field("Attempts", typeof it.attempts === "object" ? JSON.stringify(it.attempts) : it.attempts) : "") +
+          "</details>";
+      });
+      return html;
+    }
     function renderLevel(lv) {
       if (!lv || typeof lv !== "object") return "";
       var html = "";
       if (lv.level != null) html += field("Level", lv.level + (lv.levelName ? " — " + lv.levelName : ""));
+      var badges = lv.badges || [];
+      if (badges.length) {
+        html += field("Badges", badges.map(function (b) {
+          return (b.emoji ? b.emoji + " " : "") + (b.name || "") + (b.level != null ? " (level " + b.level + ")" : "");
+        }).join(", "));
+      }
       if (lv.summary) html += field("Summary", lv.summary, true);
+      if (lv.assessment) html += field("Assessment", typeof lv.assessment === "string" ? lv.assessment : JSON.stringify(lv.assessment, null, 2), true);
       var verdicts = lv.verdicts || lv.history || [];
       if (verdicts.length) {
         html += '<div class="acvc-fb-log-k">Verdict history (' + verdicts.length + ")</div>";
-        verdicts.forEach(function (v) {
-          var head = [v.at ? fmtWhen(v.at) : "", v.level != null ? "level " + v.level : "",
-                      v.verdict || v.result || ""].filter(Boolean).join(" · ");
-          html += '<details class="acvc-fb-log-sub"><summary>' + esc(head || "verdict") + "</summary>" +
-            '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(v, null, 2)) + "</pre></details>";
-        });
+        verdicts.forEach(function (v) { html += renderVerdict(v || {}); });
       }
-      var rest = Object.keys(lv).filter(function (k) {
-        return ["level", "levelName", "summary", "verdicts", "history"].indexOf(k) === -1;
-      });
-      if (rest.length) {
-        var extra = {};
-        rest.forEach(function (k) { extra[k] = lv[k]; });
-        html += '<details class="acvc-fb-log-sub"><summary>More level detail</summary>' +
-          '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(extra, null, 2)) + "</pre></details>";
-      }
+      html += renderPrescription(lv.prescription, lv.closedItems, lv.openItems);
+      html += '<details class="acvc-fb-log-sub"><summary>Full level record (as sent)</summary>' +
+        '<pre class="acvc-fb-log-json">' + esc(JSON.stringify(lv, null, 2)) + "</pre></details>";
       return html;
     }
     function renderRoadmap(rm) {
@@ -926,10 +996,17 @@
       if (steps.length) {
         html += '<table class="acvc-fb-log-table"><thead><tr><th>Step</th><th>Status</th><th>Summary</th></tr></thead><tbody>';
         steps.forEach(function (st) {
-          html += "<tr><td>" + esc(st.title || st.name || st.id || st.step || "") +
-            '</td><td><span class="acvc-fb-log-status acvc-fb-log-' + esc(st.status || "open") + '">' +
-            esc(st.status || "open") + "</span></td><td>" +
-            esc(st.summary || st.notes || "") + "</td></tr>";
+          var status = st.progress || st.status || "todo";
+          html += "<tr><td>" + (st.phase ? '<span class="acvc-fb-log-phase">' + esc(st.phase) + "</span> " : "") +
+            esc(st.title || st.name || st.id || st.step || "") +
+            '</td><td><span class="acvc-fb-log-status acvc-fb-log-' + esc(status) + '">' + esc(status) + "</span>" +
+            (st.coachStatus && st.coachStatus !== status ? '<div class="acvc-fb-log-coachst">coach: ' + esc(st.coachStatus) + "</div>" : "") +
+            "</td><td>" + esc(st.summary || st.notes || "") + "</td></tr>";
+          var thread = st.thread || st.messages || [];
+          if (thread.length) {
+            html += '<tr class="acvc-fb-log-threadrow"><td colspan="3">' +
+              renderThread(thread, "Coach chat thread for “" + (st.title || st.id || "") + "”") + "</td></tr>";
+          }
         });
         html += "</tbody></table>";
       }
