@@ -2558,7 +2558,7 @@
         title: 'Open the conversation thread for "' + label + '"',
       }, "chat ↗"));
     }
-    var kbHref = "/kanban#task=" + encodeURIComponent(t.kanban.taskId);
+    var kbHref = "/kanban?task=" + encodeURIComponent(t.kanban.taskId);
     els.push(h("a", {
       key: "kb",
       href: kbHref,
