@@ -239,11 +239,12 @@
     }
   } catch (e) { /* styling nicety only */ }
 
-  // Distribution default theme: cyberpunk — applied ONLY when the mentee
+  // Distribution default theme: cyberpunk-classic (the image ships it as a
+  // user theme; the server's active theme wins either way) — applied ONLY when the mentee
   // has never picked a theme (host key absent). A chosen theme always wins.
   try {
     if (window.localStorage.getItem("hermes-dashboard-theme") === null) {
-      window.localStorage.setItem("hermes-dashboard-theme", "cyberpunk");
+      window.localStorage.setItem("hermes-dashboard-theme", "cyberpunk-classic");
     }
     // …and the system sans font (the font selector in the sidebar footer) —
     // cyberpunk colors, readable type. A saved choice always wins.
