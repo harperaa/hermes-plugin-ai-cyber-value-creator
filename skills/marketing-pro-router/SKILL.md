@@ -12,9 +12,9 @@ are NOT in the ambient skills index — they must be loaded explicitly:
     skill_view("digital-marketing-pro:<skill-name>")
 
 Pick the best match from the catalog below, load it, and follow it.
-For YouTube creative/script/thumbnail work, ALSO consider the youtube-insights plugin skills
-(`youtube-insights:youtube-content-creator`, `youtube-insights:generate-image`,
-`youtube-insights:image-style-guide`, `youtube-insights:youtube-gap-finder`) which carry
+For YouTube creative/script/thumbnail work, ALSO consider the long-form plugin skills
+(`long-form:youtube-content-creator`, `long-form:generate-image`,
+`long-form:image-style-guide`, `long-form:youtube-gap-finder`) which carry
 the channel's own style system and competitive-intelligence workspace.
 
 ## Catalog
